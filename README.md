@@ -31,8 +31,6 @@ K1 = [1/3, -1,  0] , K2 = [0,  -1, 1/3]   K3 = [0,  -1, 1/3] , K4 = [1/3,  -1, 0
      [0,   0,   0]        [0,   0,   0]        [0, 1/3, 1/3]        [1/3, 1/3, 0]
 </pre>
 
-<!-- TO DO: After implementation -->
-
 ### Installation
 
 NOTE: Linux based OS or MacOS required to run this shell script.
