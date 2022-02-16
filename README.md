@@ -1,6 +1,4 @@
-# DVIP Fall 2021 - Exam Project
-
-## ICIP 1 Submission
+# Quarter Laplacian Filter
 
 This repository implements Quarter Laplacian Filter for Edge Aware Image Processing using the approach mentioned in this
 [paper](https://github.com/bonaventuredossou/dvip_project/blob/main/data/ICIP%201%20-%20QUARTER%20LAPLACIAN%20FILTER%20FOR%20EDGE%20AWARE%20IMAGE%20PROCESSING.pdf).
