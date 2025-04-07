@@ -43,7 +43,7 @@ d_i = k_i * U, \forall i = 1,...,4
 where * is convolution operator. Then only one feature map $d_{m(x,y)}(x, y)$ is selected, where
 
 ```math
-m(x,y) = argmin{|d_i(x,y)|; i = 1,...,4}
+m(x,y) = argmin\{|d_i(x,y)|; i = 1,...,4\}
 ```
 
 ### Installation
