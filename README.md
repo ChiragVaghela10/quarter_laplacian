@@ -3,14 +3,19 @@
 This repository implements Quarter Laplacian Filter for Edge Aware Image Processing using the approach mentioned in this
 [paper](https://github.com/bonaventuredossou/dvip_project/blob/main/data/ICIP%201%20-%20QUARTER%20LAPLACIAN%20FILTER%20FOR%20EDGE%20AWARE%20IMAGE%20PROCESSING.pdf).
 
-### Usage
+## Overview
 Image smoothing is the fundamental operation in image processing. We use it to remove image details or noise in the
 image. While performing smoothing operation, it is needed to remove small gradients and preserve the large ones which is
-called edge preserving. This repository uses Laplasian filter originally obtained from diffusion equation.
+called edge preserving. This repository uses quarter window of Discrete Laplacian operator originally obtained from
+discrete diffusion equation.
+
+```math
+U^{t+1}(x_i, y_j) = U^t(x_i, y_j) + c \Delta U^t(x_i, y_j)
+```
 
 ### Implementation
 It is implemented using classical box filter method but instead of using entire Laplacian Kernel this method uses
-quarter of Laplacian Kernel.
+quarter window of Laplacian Kernel.
 
 Standard Laplacian Kernels are as follows:
 
