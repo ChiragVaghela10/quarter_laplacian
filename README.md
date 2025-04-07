@@ -34,6 +34,18 @@ K1 = [1/3, -1,  0] , K2 = [0,  -1, 1/3]   K3 = [0,  -1, 1/3] , K4 = [1/3,  -1, 0
      [0,   0,   0]        [0,   0,   0]        [0, 1/3, 1/3]        [1/3, 1/3, 0]
 </pre>
 
+We would obtain four feature maps from these kernels. 
+
+```math
+d_i = k_i * U, \forall i = 1,...,4
+```
+
+where * is convolution operator. Then only one feature map $d_{m(x,y)}(x, y)$ is selected, where
+
+```math
+m(x,y) = argmin{|d_i(x,y)|; i = 1,...,4}
+```
+
 ### Installation
 
 NOTE: Linux based OS or MacOS required to run this shell script.
