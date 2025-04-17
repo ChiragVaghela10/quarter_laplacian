@@ -4,6 +4,7 @@ from pathlib import Path
 
 from imageprocessing.filters import QuarterLaplacian
 from imageprocessing.experiments import QuantitativeAnalysis, LowLightEnhancement
+from imageprocessing.utilities import save_filter_results
 
 ROOT_PATH = Path(__file__).parent
 img_path = ROOT_PATH / 'img'
@@ -20,8 +21,8 @@ laplace_cameraman_img = np.zeros_like(cameraman_img)
 cv.Laplacian(src=cameraman_img, ddepth=-1, dst=laplace_cameraman_img, ksize=3,
              borderType=cv.BORDER_REPLICATE)
 
-cv.imwrite(str(img_path / 'qlf_cameraman_img.png'), qlf_cameraman_img)
-cv.imwrite(str(img_path / 'laplace_cameraman_img.png'), laplace_cameraman_img)
+save_filter_results(base_img=cameraman_img, qlf_img=qlf_cameraman_img, laplace_img=laplace_cameraman_img,
+                    result_path=img_path / 'qlf_vs_std_laplace.png')
 
 # Quantitative analysis by comparing PSNR, SSIM, EPI metrics between QLF and baseline Laplacian filter
 cameraman_quant_experiment = QuantitativeAnalysis(base_img=cameraman_img, qlf_img=qlf_cameraman_img,

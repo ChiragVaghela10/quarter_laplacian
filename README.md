@@ -91,6 +91,11 @@ The QLF requires four directional responses (from four quarter windows $k_i , \f
 - Instead of convolving four separate kernels, the input image is rotated in 0°, 90°, 180°, and 270° increment.
 - Apply the fast $K_1$ response, then rotate each result back. This technique exploits the overlapping support so that 
 the same box filter computation can be reused after simple rotations.
+
+<img src="img/overlapped_region.png" width="200"><br/>
+Fig3: Overlapped support regions for different locations can be used to reduce the computation. e.g. the bottom-right
+region for the red dot is exactly the upper left region for the yellow dot.<br/><br/>
+
 - All four directional responses are stacked. For each pixel, the response with the smallest absolute value is selected 
 (mimicking the non–linear min–selection step in QLF).
 - The selected response is then either added to the image (diffusion) or used as the direct output, 
@@ -150,7 +155,11 @@ Higher EPI means the filtering preserved more of the original edges.
 test
 
 ## Results
-test
+<img src="img/qlf_vs_std_laplace.png" width="900"><br/>
+Fig4: Spectral analysis of discrete Laplacian operators<br/><br/>
+
+<img src="img/low_light_exp_result.png" width="900"><br/>
+Fig5: Spectral analysis of discrete Laplacian operators<br/><br/>
 
 ## How to Run
 ```

@@ -139,11 +139,12 @@ class LowLightEnhancement(object):
 
     @staticmethod
     def save_experiment(results: dict, img_path: Path) -> None:
-        plt.figure(figsize=(12, 4))
+        plt.figure(figsize=(10, 3))
         for idx, title in enumerate(results.keys()):
             plt.subplot(1, 4, idx + 1)
             plt.imshow(results[title], cmap='gray')
             plt.title(title)
             plt.axis('off')
+        plt.suptitle('Low Light Enhancement', y=0.9)
         plt.tight_layout()
         plt.savefig(img_path)
