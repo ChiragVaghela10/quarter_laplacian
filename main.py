@@ -1,98 +1,59 @@
-import sys
-from os import path
-from skimage import data
-import mahotas
+import cv2 as cv
+import numpy as np
+from pathlib import Path
 
-from imageprocessing.filters import *
-from imageprocessing.utilities import *
+from imageprocessing.filters import QuarterLaplacian
+from imageprocessing.experiments import QuantitativeAnalysis, LowLightEnhancement
 
-# If image is provided then that image will be used otherwise standard camera man image will be used.
-original_img = plt.imread(sys.argv[1]) if ((__name__ == '__main__') and len(sys.argv) > 1) else data.camera()
+ROOT_PATH = Path(__file__).parent
+img_path = ROOT_PATH / 'img'
 
-original_img_path = 'img/original.png'
-filtered_img_path = 'img/filtered.png'
-trivial_laplace_filtered_img = 'img/laplace.png'
-filtered10_img_path = 'img/filtered_10.png'
-filtered100_img_path = 'img/filtered_100.png'
-filtered1000_img_path = 'img/filtered_1000.png'
+cameraman_img = cv.imread(str(img_path / 'cameraman.png'), cv.IMREAD_GRAYSCALE)
+assert cameraman_img is not None, "file could not be read"
 
-# ########## Original Image ##########
-plt.title('Original Image')
-plt.imshow(original_img).set_cmap('gray')
-plt.savefig(original_img_path)
-plt.show()
+low_light_img = cv.imread(str(img_path / 'low_light.png'), cv.IMREAD_GRAYSCALE)
+assert low_light_img is not None, "file could not be read"
 
-# Declare 3 Laplacian Kernels shown in equation 3 on page 2.
-# Laplacian Filters
-LK1 = np.array([
-    [0,     1 / 4,     0],
-    [1 / 4,  -1,   1 / 4],
-    [0,     1 / 4,     0],
-])
-LK2 = np.array([
-    [-1 / 16, 5 / 16, -1 / 16],
-    [5 / 16,    -1,    5 / 16],
-    [-1 / 16, 5 / 16, -1 / 16],
-])
-LK3 = np.array([
-    [1 / 12, 1 / 6, 1 / 12],
-    [1 / 6, -1, 1 / 6],
-    [1 / 12, 1 / 6, 1 / 12],
-])
+qlf = QuarterLaplacian()
+qlf_cameraman_img = qlf.apply_filter(U=cameraman_img.copy())
+laplace_cameraman_img = np.zeros_like(cameraman_img)
+cv.Laplacian(src=cameraman_img, ddepth=-1, dst=laplace_cameraman_img, ksize=3,
+             borderType=cv.BORDER_REPLICATE)
 
-# provide kernel to the Smoothing class for the purpose of performing convolution
-# We are using Laplacian Kernel 3 which is most isotropic one.
-smoothing = Smoothing(LK3)
-result_img = smoothing.laplacian_filter(original_img)
-result_img = result_img + 128
-plt.title('QuarterLap $d_{m}$ Image')
-plt.imshow(result_img).set_cmap('gray')
-plt.savefig(filtered_img_path)
-plt.show()
+cv.imwrite(str(img_path / 'qlf_cameraman_img.png'), qlf_cameraman_img)
+cv.imwrite(str(img_path / 'laplace_cameraman_img.png'), laplace_cameraman_img)
 
-# Getting the Trivial Laplacian Filter Result
-result = mahotas.laplacian_2D(original_img)
-plt.title('Laplacian Filter Image')
-plt.imshow(result).set_cmap('gray')
-plt.savefig(trivial_laplace_filtered_img)
-plt.show()
+# Quantitative analysis by comparing PSNR, SSIM, EPI metrics between QLF and baseline Laplacian filter
+cameraman_quant_experiment = QuantitativeAnalysis(base_img=cameraman_img, qlf_img=qlf_cameraman_img,
+                                        laplace_img=laplace_cameraman_img)
+cameraman_quant_experiment_result = cameraman_quant_experiment.analyse()
 
+print(f"QLF Cameraman PSNR: {cameraman_quant_experiment_result['qlf_psnr']:.2f}, "
+      f"Laplace Cameraman PSNR: {cameraman_quant_experiment_result['laplace_psnr']:.2f}")
 
-def edge_preserved_smoothing(image, t):
-    """
-    Repeatedly Apply t times the Quarter Laplacian filter on provided image and return the result
+print(f"QLF Cameraman SSIM: {cameraman_quant_experiment_result['qlf_ssim']:.2f}, "
+      f"Laplace Cameraman SSIM: {cameraman_quant_experiment_result['laplace_ssim']:.2f}")
 
-    :param image: input image
-    :param t: the number of times the smoothing operation should be run
-    :return: new image with edges preserved
-    """
-    new_image = image
-    for i in range(t):
-        new_image = new_image + smoothing.laplacian_filter(new_image)
-        # for row profile display (Fig 5g)
-        # Calculate 128th row profile on 20th iteration if not exists
-        if i == 19 and (not path.isfile(row_profile_path)):
-            get_row_profile(new_image, 127)
-    return new_image
+print(f"QLF Cameraman EPI: {cameraman_quant_experiment_result['qlf_epi']:.2f}, "
+      f"Laplace Cameraman EPI: {cameraman_quant_experiment_result['laplace_epi']:.2f}")
 
+# Low Light Image Enhancement Experiment
+low_light_experiment = LowLightEnhancement(qlf_filter=qlf)
 
-# Apply Quarter Laplace filter for t = 10
-ten_times = edge_preserved_smoothing(original_img, 10)
-plt.title('QuarterLap $t=10$ Image')
-plt.imshow(ten_times).set_cmap('gray')
-plt.savefig(filtered10_img_path)
-plt.show()
+low_light_experiment_result = low_light_experiment.enhance(image=low_light_img)
+low_light_experiment.save_experiment(results=low_light_experiment_result,
+                                     img_path=img_path / 'low_light_exp_result.png')
 
-# Apply Quarter Laplace filter for t = 100
-hundreds_times = edge_preserved_smoothing(original_img, 100)
-plt.title('QuarterLap $t=100$ Image')
-plt.imshow(hundreds_times).set_cmap('gray')
-plt.savefig(filtered100_img_path)
-plt.show()
+low_light_quant_experiment = QuantitativeAnalysis(base_img=low_light_img,
+                                                  qlf_img=low_light_experiment_result['qlf'],
+                                                  laplace_img=low_light_experiment_result['laplace'])
+low_light_quant_experiment_result = low_light_quant_experiment.analyse()
 
-# Apply Quarter Laplace filter for t = 1000
-thousand_times = edge_preserved_smoothing(original_img, 1000)
-plt.title('QuarterLap $t=1000$ Image')
-plt.imshow(thousand_times).set_cmap('gray')
-plt.savefig(filtered1000_img_path)
-plt.show()
+print(f"QLF Low Light PSNR: {low_light_quant_experiment_result['qlf_psnr']:.2f}, "
+      f"Laplace Low Light PSNR: {low_light_quant_experiment_result['laplace_psnr']:.2f}")
+
+print(f"QLF Low Light SSIM: {low_light_quant_experiment_result['qlf_ssim']:.2f}, "
+      f"Laplace Low Light SSIM: {low_light_quant_experiment_result['laplace_ssim']:.2f}")
+
+print(f"QLF Low Light EPI: {low_light_quant_experiment_result['qlf_epi']:.2f}, "
+      f"Laplace Low Light EPI: {low_light_quant_experiment_result['laplace_epi']:.2f}")

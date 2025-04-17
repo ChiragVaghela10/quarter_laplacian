@@ -1,74 +1,103 @@
-from .utilities import *
+import numpy as np
+import cv2 as cv
+
+from constants import MIN_PIXEL_VALUE, MAX_PIXEL_VALUE
 
 
-class Smoothing(object):
-    """
-    The base class for smoothing operation
-    """
-    kernel = np.array([])
-    K1 = np.array([])
-    K2 = np.array([])
-    K3 = np.array([])
-    K4 = np.array([])
-
-    img = np.array([])
-    padded_img = np.array([])
-    res_img = np.array([])
-
-    def __init__(self, kernel):
+class QuarterLaplacian(object):
+    def __init__(self, iterations: int = 1, add_to_input: bool = True) -> None:
         """
-        This method computes four quarter kernels K1, K2, K3, K4 from kernel parameter
+        Parameters:
+        iterations (int): Number of diffusion iterations.
+        add_to_input (bool): Whether to add the computed QLF response to the input (diffusion).
+        """
+        self.iterations = iterations
+        self.add_to_input = add_to_input
 
-        :param kernel: One of the Laplacian Kernels
+    def _fast_k1_convolve(self, U: np.ndarray) -> np.ndarray:
         """
-        self.kernel = kernel
-        self.edges = self.kernel.shape[0] // 2  # Assumed kernel is a square matrix
-        self.K1 = np.array([
-            [self.kernel[0][0] * 4, self.kernel[0][1] * 2, 0],
-            [self.kernel[1][0] * 2,       -1,              0],
-            [0,                            0,              0]
-        ])
-        self.K2 = np.array([
-            [0, self.kernel[0][1] * 2, self.kernel[0][2] * 4],
-            [0,         -1,            self.kernel[1][2] * 2],
-            [0,          0,                                0]
-        ])
-        self.K3 = np.array([
-            [0,          0,                                0],
-            [0,         -1,            self.kernel[1][2] * 2],
-            [0, self.kernel[2][1] * 2, self.kernel[2][2] * 4]
-        ])
-        self.K4 = np.array([
-            [0,                      0,                    0],
-            [self.kernel[1][0] * 2, -1,                    0],
-            [self.kernel[2][0] * 4, self.kernel[2][1] * 2, 0]
-        ])
+        Compute the fast convolution response corresponding to kernel k₁, which (according to the paper) can be
+        rewritten as:
 
-    def laplacian_filter(self, image):
-        """
-        This method iterates through all pixels of the padded image and performs convolution
-        :param image: padded image
-        :return: smoothed image
-        """
-        self.img = image
-        self.padded_img = zero_padding(self.img, self.edges)
-        self.res_img = np.zeros(self.padded_img.shape)
-        for m in np.arange(self.edges, self.padded_img.shape[0] - self.edges):
-            for n in np.arange(self.edges, self.padded_img.shape[1] - self.edges):
-                self.res_img[m, n] = self.convolve(m, n)
-        return self.res_img[self.edges:self.res_img.shape[0] - self.edges, self.edges:self.res_img.shape[1] - self.edges]
+           k₁ = (1/3) * [1 1; 1 1] - (4/3) * δ(center)
 
-    def convolve(self, x, y):
+        This means that for a given pixel (i, j), the response is computed using the 2x2 region starting at (i, j):
+
+           response(i,j) = (1/3) * (U(i,j) + U(i,j+1) + U(i+1,j) + U(i+1,j+1)) - (4/3) * U(i+1, j+1)
+
+                (i, j)
+                |
+               \|/
+               [_  _  x]               [x  x  x]
+            1/3[_  _  x]      -     4/3[x  _  x]
+               [x  x  x]               [x  x  x]
+
+        Because the support region is overlapped among neighboring pixels, we can compute the sum over every 2×2 block
+        for the whole image using a box filter.
+
+
+        Parameters:
+          U (np.ndarray): 2D image (dtype float32).
+
+        Returns:
+          response (np.ndarray): Response image, same size as U.
         """
-        This method takes coordinates of the image and calculate di_xy = ki * U(x, y) for all i = 1,2,3,4
-        :param x: row from the top
-        :param y: column from the left
-        :return: d_{argmin{|di(x, y)|}} i.e. pixel value obtained for res_img at position x, y
+        Uh, Uw = U.shape
+        response = np.zeros_like(U)
+        box_sum = cv.boxFilter(src=U, ddepth=-1, ksize=(2, 2), normalize=False, borderType=cv.BORDER_REPLICATE)
+        valid_k1_h, valid_k1_w = Uh - 1, Uw - 1
+        response[:valid_k1_h, :valid_k1_w] = (1/3) * box_sum[:valid_k1_h, :valid_k1_w] - (4/3) * U[1:Uh, 1:Uw]
+        return response
+
+    def _compute_diffusion_result(self, U: np.ndarray) -> np.ndarray:
         """
-        curr_region = self.padded_img[x - self.edges:x + self.edges + 1, y - self.edges:y + self.edges + 1]
-        res_K1 = np.sum(self.K1 * curr_region)
-        res_K2 = np.sum(self.K2 * curr_region)
-        res_K3 = np.sum(self.K3 * curr_region)
-        res_K4 = np.sum(self.K4 * curr_region)
-        all_res = [res_K1, res_K2, res_K3, res_K4]
-        return all_res[np.argmin([abs(res_K1), abs(res_K2), abs(res_K3), abs(res_K4)])]
+        Applies one iteration of the fast Quarter Laplacian Filter (QLF)
+        using the overlapping support optimization.
+
+        The idea is to compute a fast response corresponding to kernel k₁ via a 2×2 box filter,
+        then obtain the other three directional responses by rotating the image, applying the
+        same operation, and un-rotating the response.
+
+        For each pixel, we select the response with the smallest absolute value.
+
+        Parameters:
+         U (np.ndarray): Grayscale image (dtype np.uint8 or float32).
+
+        Returns:
+         U_out (np.ndarray): Filtered image (same dtype as input, clipped to [0, 255]).
+        """
+        responses = []
+        for i in range(4):
+            # Rotate the image counter-clockwise by 90°  k times.
+            rotated_U = np.rot90(U, k=i)
+            # Compute the fast response (equivalent to k₁ on the rotated image)
+            rotated_convolved_U = self._fast_k1_convolve(rotated_U)
+            # Rotate the response back to the original orientation.
+            # For np.rot90, rotating back is achieved by rotating in the opposite direction.
+            Ki_result = np.rot90(rotated_convolved_U, k=-i)
+            responses.append(Ki_result)
+
+        # Stack responses: shape (H, W, 4)
+        responses_stack = np.stack(responses, axis=-1)
+        # Get absolute responses for minimum selection.
+        abs_responses = np.abs(responses_stack)
+        # For each pixel, get the index (0 to 3) of the minimal absolute response.
+        min_indices = np.argmin(abs_responses, axis=-1)
+        # Select the corresponding response for each pixel.
+        # np.take_along_axis requires expanding the indices to match the last axis.
+        qlf_response = np.take_along_axis(responses_stack, np.expand_dims(min_indices, axis=-1), axis=-1)
+        qlf_response = qlf_response.squeeze(axis=-1)
+
+        # perform diffusion operation: update image by adding QLF response.
+        if self.add_to_input:
+            U += qlf_response
+        else:
+            U = qlf_response
+
+        U_out = np.clip(U, MIN_PIXEL_VALUE, MAX_PIXEL_VALUE).astype(np.uint8)
+        return U_out
+
+    def apply_filter(self, U: np.ndarray) -> np.ndarray:
+        for _ in range(self.iterations):
+            U = self._compute_diffusion_result(U)
+        return U

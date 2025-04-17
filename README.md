@@ -33,8 +33,8 @@ and standard discrete Laplacian Kernels are as follows:
 [0,   1/4, 0  ]   [-1/16, 5/16, -1/16]   [1/12, 1/6, 1/12]
 </pre>
 
-<img src="img/laplacian_operator_spectral_analysis.png" width="400"><br/><br/>
-Fig1: Spectral analysis of discrete Laplacian operators
+<img src="img/laplacian_operator_spectral_analysis.png" width="400"><br/>
+Fig1: Spectral analysis of discrete Laplacian operators<br/><br/>
 
 The right kernel is the most isotropic one and is chosen for implementation in this repository. The paper proposes to 
 use quarter window of discrete Laplacian operator.  Therefore, the quarter Laplacian filters would be as follows:
@@ -45,8 +45,8 @@ K1 = [1/3, -1,  0] , K2 = [0,  -1, 1/3]   K3 = [0,  -1, 1/3] , K4 = [1/3,  -1, 0
      [0,   0,   0]        [0,   0,   0]        [0, 1/3, 1/3]        [1/3, 1/3, 0]
 </pre>
 
-<img src="img/quarter_windows.png" width="500"><br/><br/>
-Fig2: four quarter windows for the center location (red dot)
+<img src="img/quarter_windows.png" width="500"><br/>
+Fig2: four quarter windows for the center location (red dot)<br/><br/>
 
 We would obtain four feature maps from these kernels. 
 
@@ -71,33 +71,91 @@ support region indicates more local geometric information.
 - QWFs can be implemented using box filter, leading to high performance.
 
 ## Implementation
+The filter can be implemented using 2X2 box filter as follows:
+
+<pre>
+     [1/3, 1/3, 0]           [1, 1, 0]       [0,  0,  0]
+K1 = [1/3, -1,  0]    =  1/3 [1, 1, 0] - 4/3 [0,  1,  0]
+     [0,   0,   0]           [0, 0, 0]       [0,  0,  0]
+</pre>
+
+for each pixel $(i, j), where full 2X2 block exists, it computes
+
+```math
+response(i,j) = ???
+```
+
+### Rotation trick to exploit overlapped support region
+The QLF requires four directional responses (from four quarter windows $k_i , \forall i = 1,...,4$). Therefore,
+- Instead of convolving four separate kernels, we rotate the input image in 0°, 90°, 180°, and 270° increment.
+- apply the fast k₁ response, then rotate each result back. This technique exploits the overlapping support so that 
+the same box filter computation can be reused after simple rotations.
+- All four directional responses are stacked. For each pixel, the response with the smallest absolute value is selected 
+(mimicking the non–linear min–selection step in QLF).
+- The selected response is then either added to the image (diffusion) or used as the direct output, 
+depending on the $add_to_input$ flag for the filter.
+
+Because of the overlapping support region and reusability via rotation, we perform only one box filtering per rotated 
+version instead of four independent convolutions. This achieves nearly the same runtime as a conventional Laplacian 
+filter.
+
+## Experimentation
+
+Conducted experiments for quantitative evaluation and Low light enhancement use case demonstration.
+
+### Quantitative Evaluation
+The quantitative evaluation is performed using following metrics:
+
+#### 1. PSNR (Peak Signal-to-Noise Ratio)
+How much the filtered image deviates from the original. It assumes the original is the “ground truth” and higher values 
+mean the processed image is closer (less distorted).
+
+```math
+PSNR = 10 . log_10(\fract{MAX^2}{MSE})
+```
+
+Where, $MAX$ is the maximum possible pixel value (e.g., 255) and $MSE$ is the Mean Squared Error between the original 
+and processed images
+
+- High PSNR: Good preservation of image details
+- Low PSNR: High distortion introduced by filtering
+
+#### 2. SSIM (Structural Similarity Index)
+How structurally similar two images are beyond just pixel-wise error. It considers Luminance, Contrast, Structure
+
+Range:
+```math
+SSIM \in [0, 1]
+```
+
+$1$ means perfectly similar and $\lt$ some structural differences
+
+#### 3. EPI (Edge Preservation Index)
+It measures how well the edges in the image are preserved after filtering. It compares the edge maps 
+(e.g., from Sobel or Canny) of the original vs. filtered images.
+
+##### Implementation
+- Applied edge detection (Canny) to both original and filtered images.
+- Compared the edge strength or patterns using Dice coefficient between binary edge maps
+
+Higher EPI means the filtering preserved more of the original edges.
+
+#### Summary of metrics used for quantitative analysis
+| Metric | Measures               | Range      | Good Value | Notes                                     |
+|--------|------------------------|------------|------------|-------------------------------------------|
+| PSNR   | Pixel-wise fidelity    | 0 - inf dB | > 30 dB    | Doesn’t reflect perceptual quality well   |
+| SSIM   | Structural similarity  | 0 - 1      | > 0.9      | Closer to 1 is better                     |
+| EPI    | Edge preservation      | 0 - 1      | > 0.7      | Custom metric; reflects paper's goal well |
+
+### Low Light Enhancement Use Case Demonstration
 test
 
-## Installation
+## Results
+test
 
-NOTE: Linux based OS or MacOS required to run this shell script.
-
-1.	Clone the repository from git.
-2.	Open the command line interface (CLI) of your OS and move to the project folder <i>ICIP1_quarter_laplacian/</i> 
-      using cd command.
-3.	Run the installation script using following command
-	
-	$ ./install.sh
-          
-this script will automatically create a new directory namely <i>env_dir/</i> to create a virtual environment, activate 
-that environment and install all the required library into that.
-
-NOTE: If you get permission denied error while running this script, kindly run the command
-	
-    $ chmod 755 install.sh
-
-4.  Once the project is installed and environment is activated, <i>main.py</i> can be run using Python3 as follows 
+## How to Run
+```
+python main.py
+```
 
 
-    $ python3 main.py [image_name]
-
-It is important to note that we are using Python3 for the implementation purpose. Also, user can provide image name with
-its path as an optional parameter to <i>main.py</i> which will be considered as base original image and all operations 
-will be performed on that image. If parameter is not provided, all smoothing operations will be performed on this 
-[standard camera-man image](https://scikit-image.org/docs/stable/api/skimage.data.html#skimage.data.camera) which is 
-similar to the one shown in paper of ICIP1.
