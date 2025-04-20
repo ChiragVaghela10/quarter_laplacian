@@ -1,7 +1,7 @@
 # Quarter Laplacian Filter
 
 This repository implements Quarter Laplacian Filter for Edge Aware Image Processing using the approach mentioned in this
-[paper](https://github.com/bonaventuredossou/dvip_project/blob/main/data/ICIP%201%20-%20QUARTER%20LAPLACIAN%20FILTER%20FOR%20EDGE%20AWARE%20IMAGE%20PROCESSING.pdf).
+[paper](https://github.com/ChiragVaghela10/quarter_laplacian/blob/refactoring/data/ICIP%201%20-%20QUARTER%20LAPLACIAN%20FILTER%20FOR%20EDGE%20AWARE%20IMAGE%20PROCESSING.pdf).
 
 ## Overview
 Image smoothing is the fundamental operation in image processing. We use it to remove image details or noise in the
@@ -145,25 +145,48 @@ strength or patterns using Dice coefficient between binary edge maps.
 Higher EPI means the filtering preserved more of the original edges.
 
 #### Summary of metrics used for quantitative analysis
-| Metric | Measures               | Range      | Good Value | Notes                                     |
-|--------|------------------------|------------|------------|-------------------------------------------|
-| PSNR   | Pixel-wise fidelity    | 0 - inf dB | > 30 dB    | Doesn’t reflect perceptual quality well   |
-| SSIM   | Structural similarity  | 0 - 1      | > 0.9      | Closer to 1 is better                     |
-| EPI    | Edge preservation      | 0 - 1      | > 0.7      | Custom metric; reflects paper's goal well |
+| Metric | Measures             | Range      | Good Value | Notes                                     |
+|--------|----------------------|------------|------------|-------------------------------------------|
+| PSNR   | Pixel-wise fidelity  | 0 - inf dB | > 30 dB    | Doesn’t reflect perceptual quality well   |
+| SSIM   | Structural similarity| 0 - 1      | > 0.9      | Closer to 1 is better                     |
+| EPI    | Edge preservation    | 0 - 1      | > 0.7      | Custom metric; reflects paper's goal well |
 
 ### Low Light Enhancement Use Case Demonstration
-test
+The Quarter Laplacian Filter (QLF) was applied to 500 densely low-light images sourced from the
+[Kaggle dataset](https://www.kaggle.com/datasets/soumikrakshit/lol-dataset). For each image, three quantitative metrics
+PSNR, SSIM and EPI were computed after applying both the QLF and the standard Laplacian filter. Finally, the average 
+values of all three metrics were calculated across the entire dataset to provide a comprehensive comparison of the 
+two filtering approaches.
 
 ## Results
+
 <img src="img/qlf_vs_std_laplace.png" width="900"><br/>
-Fig4: Spectral analysis of discrete Laplacian operators<br/><br/>
+Fig4: Visual comparison of effects of Quarter Laplacian and Laplacian Filter<br/><br/>
 
 <img src="img/low_light_exp_result.png" width="900"><br/>
-Fig5: Spectral analysis of discrete Laplacian operators<br/><br/>
+Fig5: Low-Light Enhancement. Left-to-right: original, gamma corrected, QLF and standard Laplace filters<br/><br/>
+
+Performance comparison of QLF vs Laplace filter using PSNR, SSIM and EPI on 500 low-light images:
+
+| Metric | QLF   | Laplacian | 
+|--------|-------|-----------|
+| PSNR   | 19.34 | 18.23     | 
+| SSIM   | 0.47  | 0.15      |
+| EPI    | 0.08  | 0.03      |
+
+QLF consistently outperforms the standard Laplacian filter across all three metrics:
+- Higher PSNR suggests better noise suppression and overall signal fidelity.
+- Much better SSIM (Structural Similarity) shows QLF preserves perceptual features like edges and texture more 
+effectively.
+- EPI (Edge Preservation Index) is higher for QLF, which aligns with the intent of QLF being edge-aware.
 
 ## How to Run
 ```
 python main.py
 ```
 
+## Future Prospects
+- reduce run time
+- perform statistical significance test
+- explore more quantitative matrices
 

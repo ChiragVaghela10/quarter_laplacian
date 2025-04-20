@@ -14,6 +14,20 @@ class QuarterLaplacian(object):
         self.iterations = iterations
         self.add_to_input = add_to_input
 
+    def _rotate_image_cv(self, img: np.ndarray, k: int) -> np.ndarray:
+        """
+        Rotate image by k * 90 degrees counter-clockwise using OpenCV.
+        k can be 0, 1, 2, or 3.
+        """
+        if k % 4 == 0:
+            return img
+        elif k % 4 == 1:
+            return cv.rotate(img, cv.ROTATE_90_COUNTERCLOCKWISE)
+        elif k % 4 == 2:
+            return cv.rotate(img, cv.ROTATE_180)
+        elif k % 4 == 3:
+            return cv.rotate(img, cv.ROTATE_90_CLOCKWISE)
+
     def _fast_k1_convolve(self, U: np.ndarray) -> np.ndarray:
         """
         Compute the fast convolution response corresponding to kernel k₁, which (according to the paper) can be
@@ -67,14 +81,14 @@ class QuarterLaplacian(object):
          U_out (np.ndarray): Filtered image (same dtype as input, clipped to [0, 255]).
         """
         responses = []
-        for i in range(4):
+        for k in range(4):
             # Rotate the image counter-clockwise by 90°  k times.
-            rotated_U = np.rot90(U, k=i)
+            rotated_U = self._rotate_image_cv(U, k)
             # Compute the fast response (equivalent to k₁ on the rotated image)
             rotated_convolved_U = self._fast_k1_convolve(rotated_U)
             # Rotate the response back to the original orientation.
             # For np.rot90, rotating back is achieved by rotating in the opposite direction.
-            Ki_result = np.rot90(rotated_convolved_U, k=-i)
+            Ki_result = np.rot90(rotated_convolved_U, -k % 4)
             responses.append(Ki_result)
 
         # Stack responses: shape (H, W, 4)
