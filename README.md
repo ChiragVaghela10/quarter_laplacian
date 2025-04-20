@@ -175,10 +175,16 @@ Performance comparison of QLF vs Laplace filter using PSNR, SSIM and EPI on 500 
 | EPI    | 0.08  | 0.03      |
 
 QLF consistently outperforms the standard Laplacian filter across all three metrics:
-- Higher PSNR suggests better noise suppression and overall signal fidelity.
-- Much better SSIM (Structural Similarity) shows QLF preserves perceptual features like edges and texture more 
-effectively.
-- EPI (Edge Preservation Index) is higher for QLF, which aligns with the intent of QLF being edge-aware.
+- A higher PSNR generally indicates better image quality (less distortion). QLF achieves a +1.11 dB improvement over 
+the Laplacian filter, indicating that it produces less noisy or distorted outputs and preserves the original image 
+fidelity better.
+- SSIM measures perceptual similarity, focusing on luminance, contrast, and structure. The QLF outperforms the Laplacian 
+filter by a substantial margin, with a SSIM improvement of +0.32. This implies that QLF preserves structures and 
+textures significantly better, which is especially critical in low-light images where structural features can easily 
+be lost.
+- EPI measures how well edges are preserved in the filtered image. QLF again shows better performance with a +0.05 gain, 
+meaning it retains edge details more effectively than the standard Laplacian, which is crucial for maintaining the 
+sharpness and clarity of objects.
 
 ## How to Run
 ```
