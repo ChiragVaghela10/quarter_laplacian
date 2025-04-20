@@ -1,98 +1,80 @@
-import sys
-from os import path
-from skimage import data
-import mahotas
+import cv2 as cv
+import numpy as np
+import opendatasets as od
+from statistics import mean
+from pathlib import Path
+from tqdm import tqdm
 
-from imageprocessing.filters import *
-from imageprocessing.utilities import *
+from imageprocessing.filters import QuarterLaplacian
+from imageprocessing.experiments import QuantitativeAnalysis, LowLightEnhancement
+from imageprocessing.utilities import save_filter_results
 
-# If image is provided then that image will be used otherwise standard camera man image will be used.
-original_img = plt.imread(sys.argv[1]) if ((__name__ == '__main__') and len(sys.argv) > 1) else data.camera()
+from constants import LOW_LIGHT_IMG_DATASET
 
-original_img_path = 'img/original.png'
-filtered_img_path = 'img/filtered.png'
-trivial_laplace_filtered_img = 'img/laplace.png'
-filtered10_img_path = 'img/filtered_10.png'
-filtered100_img_path = 'img/filtered_100.png'
-filtered1000_img_path = 'img/filtered_1000.png'
+# od.download(LOW_LIGHT_IMG_DATASET)
 
-# ########## Original Image ##########
-plt.title('Original Image')
-plt.imshow(original_img).set_cmap('gray')
-plt.savefig(original_img_path)
-plt.show()
+ROOT_PATH = Path(__file__).parent
+LOW_LIGHT_IMG_DIR1 = ROOT_PATH / 'lol-dataset/lol_dataset/our485/low'
+LOW_LIGHT_IMG_DIR2 = ROOT_PATH / 'lol-dataset/lol_dataset/eval15/low'
+CAMERAMAN_IMG_PATH = ROOT_PATH / 'img'
 
-# Declare 3 Laplacian Kernels shown in equation 3 on page 2.
-# Laplacian Filters
-LK1 = np.array([
-    [0,     1 / 4,     0],
-    [1 / 4,  -1,   1 / 4],
-    [0,     1 / 4,     0],
-])
-LK2 = np.array([
-    [-1 / 16, 5 / 16, -1 / 16],
-    [5 / 16,    -1,    5 / 16],
-    [-1 / 16, 5 / 16, -1 / 16],
-])
-LK3 = np.array([
-    [1 / 12, 1 / 6, 1 / 12],
-    [1 / 6, -1, 1 / 6],
-    [1 / 12, 1 / 6, 1 / 12],
-])
+cameraman_img = cv.imread(str(CAMERAMAN_IMG_PATH / 'cameraman.png'), cv.IMREAD_GRAYSCALE)
+assert cameraman_img is not None, "file could not be read"
 
-# provide kernel to the Smoothing class for the purpose of performing convolution
-# We are using Laplacian Kernel 3 which is most isotropic one.
-smoothing = Smoothing(LK3)
-result_img = smoothing.laplacian_filter(original_img)
-result_img = result_img + 128
-plt.title('QuarterLap $d_{m}$ Image')
-plt.imshow(result_img).set_cmap('gray')
-plt.savefig(filtered_img_path)
-plt.show()
+low_light_img = cv.imread(str(CAMERAMAN_IMG_PATH / 'low_light.png'), cv.IMREAD_GRAYSCALE)
+assert low_light_img is not None, "file could not be read"
 
-# Getting the Trivial Laplacian Filter Result
-result = mahotas.laplacian_2D(original_img)
-plt.title('Laplacian Filter Image')
-plt.imshow(result).set_cmap('gray')
-plt.savefig(trivial_laplace_filtered_img)
-plt.show()
+# Comparison of QLF and Laplace Filter
+qlf = QuarterLaplacian()
+qlf_cameraman_img = qlf.apply_filter(U=cameraman_img.copy())
 
+# Apply Laplacian Filter
+laplace_cameraman_img = np.zeros_like(cameraman_img)
+cv.Laplacian(src=cameraman_img, ddepth=-1, dst=laplace_cameraman_img, ksize=3,
+             borderType=cv.BORDER_REPLICATE)
+save_filter_results(base_img=cameraman_img, qlf_img=qlf_cameraman_img, laplace_img=laplace_cameraman_img,
+                    result_path=CAMERAMAN_IMG_PATH / 'qlf_vs_std_laplace.png')
 
-def edge_preserved_smoothing(image, t):
-    """
-    Repeatedly Apply t times the Quarter Laplacian filter on provided image and return the result
+# Quantitative analysis by comparing PSNR, SSIM, EPI metrics between QLF and baseline Laplacian filter
+cameraman_quant_analysis = QuantitativeAnalysis(base_img=cameraman_img, qlf_img=qlf_cameraman_img,
+                                                laplace_img=laplace_cameraman_img)
+cameraman_analysis_result = cameraman_quant_analysis.analyse()
 
-    :param image: input image
-    :param t: the number of times the smoothing operation should be run
-    :return: new image with edges preserved
-    """
-    new_image = image
-    for i in range(t):
-        new_image = new_image + smoothing.laplacian_filter(new_image)
-        # for row profile display (Fig 5g)
-        # Calculate 128th row profile on 20th iteration if not exists
-        if i == 19 and (not path.isfile(row_profile_path)):
-            get_row_profile(new_image, 127)
-    return new_image
+print(f"QLF Cameraman PSNR: {cameraman_analysis_result['qlf_psnr']:.2f}, "
+      f"Laplace Cameraman PSNR: {cameraman_analysis_result['laplace_psnr']:.2f}")
 
+print(f"QLF Cameraman SSIM: {cameraman_analysis_result['qlf_ssim']:.2f}, "
+      f"Laplace Cameraman SSIM: {cameraman_analysis_result['laplace_ssim']:.2f}")
 
-# Apply Quarter Laplace filter for t = 10
-ten_times = edge_preserved_smoothing(original_img, 10)
-plt.title('QuarterLap $t=10$ Image')
-plt.imshow(ten_times).set_cmap('gray')
-plt.savefig(filtered10_img_path)
-plt.show()
+print(f"QLF Cameraman EPI: {cameraman_analysis_result['qlf_epi']:.2f}, "
+      f"Laplace Cameraman EPI: {cameraman_analysis_result['laplace_epi']:.2f}")
 
-# Apply Quarter Laplace filter for t = 100
-hundreds_times = edge_preserved_smoothing(original_img, 100)
-plt.title('QuarterLap $t=100$ Image')
-plt.imshow(hundreds_times).set_cmap('gray')
-plt.savefig(filtered100_img_path)
-plt.show()
+# Low Light Image Enhancement Experiment
+low_light_experiment = LowLightEnhancement(qlf_filter=qlf)
+quant_metrics = []
+for image_path in tqdm(sorted(LOW_LIGHT_IMG_DIR1.glob('*.*')) + sorted(LOW_LIGHT_IMG_DIR1.glob('*.*')),
+                       desc='Enhancing Images'):
+    low_light_img = cv.imread(str(image_path), cv.IMREAD_GRAYSCALE)
+    low_light_exp_result = low_light_experiment.enhance(image=low_light_img)
+    quant_analysis = QuantitativeAnalysis(
+        base_img=low_light_img,
+        qlf_img=low_light_exp_result['qlf'],
+        laplace_img=low_light_exp_result['laplace'],
+    )
+    quant_analysis_result = quant_analysis.analyse()
+    quant_metrics.append(quant_analysis_result)
 
-# Apply Quarter Laplace filter for t = 1000
-thousand_times = edge_preserved_smoothing(original_img, 1000)
-plt.title('QuarterLap $t=1000$ Image')
-plt.imshow(thousand_times).set_cmap('gray')
-plt.savefig(filtered1000_img_path)
-plt.show()
+avg_qlf_psnr = mean(res['qlf_psnr'] for res in quant_metrics)
+avg_laplace_psnr = mean(res['laplace_psnr'] for res in quant_metrics)
+avg_qlf_ssim = mean(res['qlf_ssim'] for res in quant_metrics)
+avg_laplace_ssim = mean(res['laplace_ssim'] for res in quant_metrics)
+avg_qlf_epi = mean(res['qlf_epi'] for res in quant_metrics)
+avg_laplace_epi = mean(res['laplace_epi'] for res in quant_metrics)
+
+print("\n=== Average Quantitative Results (via quant_result) ===")
+print(f"Avg QLF PSNR:     {avg_qlf_psnr:.2f}")
+print(f"Avg Laplace PSNR: {avg_laplace_psnr:.2f}")
+print(f"Avg QLF SSIM:     {avg_qlf_ssim:.2f}")
+print(f"Avg Laplace SSIM: {avg_laplace_ssim:.2f}")
+print(f"Avg QLF EPI:      {avg_qlf_epi:.2f}")
+print(f"Avg Laplace EPI:  {avg_laplace_epi:.2f}")

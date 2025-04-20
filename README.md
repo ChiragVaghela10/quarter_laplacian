@@ -1,23 +1,34 @@
 # Quarter Laplacian Filter
 
 This repository implements Quarter Laplacian Filter for Edge Aware Image Processing using the approach mentioned in this
-[paper](https://github.com/bonaventuredossou/dvip_project/blob/main/data/ICIP%201%20-%20QUARTER%20LAPLACIAN%20FILTER%20FOR%20EDGE%20AWARE%20IMAGE%20PROCESSING.pdf).
+[paper](https://github.com/ChiragVaghela10/quarter_laplacian/blob/refactoring/data/ICIP%201%20-%20QUARTER%20LAPLACIAN%20FILTER%20FOR%20EDGE%20AWARE%20IMAGE%20PROCESSING.pdf).
+
+<img src="img/qlf_vs_std_laplace.png" width="900"><br/>
+Fig4: Visual comparison of effects of Quarter Laplacian and Laplacian Filter<br/><br/>
 
 ## Overview
 Image smoothing is the fundamental operation in image processing. We use it to remove image details or noise in the
-image. While performing smoothing operation, it is needed to remove small gradients and preserve the large ones which is
-called edge preserving. This repository uses quarter window of Discrete Laplacian operator originally obtained from
-discrete diffusion equation.
+image. Its applications include depth estimation, optical flow estimation, stereo vision, surface reconstruction, 
+object detection, etc. While performing smoothing operation, it is important to remove small gradients (texture) and 
+preserve the large ones (structure), also called edge preserving.
+
+### Limitations of deep learning based filtering
+The edge preserving property can be achieved by CNNs. However, CNNs:
+- Can not be adapted to high-resolution images
+- Need high computational resources limiting their applicability in real-time applications
+- Lead to unwanted artifacts and their weights are uninterpretable
+
+### Quarter window filters (QWF)
+The novel approach presented in the paper, is to use only quarter part of the classical filters i.e. Laplace filter,
+Gaussian filter, Bilateral filter etc. The paper and this repository focuses on Quarter Laplacian Filter (QLF).
+
+Discrete Laplacian operator originally obtained from discrete diffusion equation:
 
 ```math
 U^{t+1}(x_i, y_j) = U^t(x_i, y_j) + c \Delta U^t(x_i, y_j)
 ```
 
-### Implementation
-It is implemented using classical box filter method but instead of using entire Laplacian Kernel this method uses
-quarter window of Laplacian Kernel.
-
-Standard Laplacian Kernels are as follows:
+and standard discrete Laplacian Kernels are as follows:
 
 <pre>
 [0,   1/4, 0  ]   [-1/16, 5/16, -1/16]   [1/12, 1/6, 1/12]
@@ -25,8 +36,11 @@ Standard Laplacian Kernels are as follows:
 [0,   1/4, 0  ]   [-1/16, 5/16, -1/16]   [1/12, 1/6, 1/12]
 </pre>
 
-This implementation uses right most Kernel which is the most isotropic kernel as mentioned in the paper. Therefore, the 
-quarter Laplacian filters would be as follows:
+<img src="img/laplacian_operator_spectral_analysis.png" width="400"><br/>
+Fig1: Spectral analysis of discrete Laplacian operators<br/><br/>
+
+The right kernel is the most isotropic one and is chosen for implementation in this repository. The paper proposes to 
+use quarter window of discrete Laplacian operator.  Therefore, the quarter Laplacian filters would be as follows:
 
 <pre>
      [1/3, 1/3, 0]        [0, 1/3, 1/3]        [0,   0,   0]        [0,     0, 0]
@@ -34,34 +48,145 @@ K1 = [1/3, -1,  0] , K2 = [0,  -1, 1/3]   K3 = [0,  -1, 1/3] , K4 = [1/3,  -1, 0
      [0,   0,   0]        [0,   0,   0]        [0, 1/3, 1/3]        [1/3, 1/3, 0]
 </pre>
 
-### Installation
+<img src="img/quarter_windows.png" width="500"><br/>
+Fig2: four quarter windows for the center location (red dot)<br/><br/>
 
-NOTE: Linux based OS or MacOS required to run this shell script.
+We would obtain four feature maps from these kernels. 
 
-1.	Clone the repository from git.
-2.	Open the command line interface (CLI) of your OS and move to the project folder <i>ICIP1_quarter_laplacian/</i> 
-      using cd command.
-3.	Run the installation script using following command
-	
-	$ ./install.sh
-          
-this script will automatically create a new directory namely <i>env_dir/</i> to create a virtual environment, activate 
-that environment and install all the required library into that.
+```math
+d_i = k_i * U, \forall i = 1,...,4
+```
 
-NOTE: If you get permission denied error while running this script, kindly run the command
-	
-    $ chmod 755 install.sh
+where * is convolution operator. Then only one feature map $d_{m(x,y)}(x, y)$ is selected, where
 
-4.  Once the project is installed and environment is activated, <i>main.py</i> can be run using Python3 as follows 
+```math
+m(x,y) = argmin_i\{|d_i(x,y)|; i = 1,...,4\}
+```
 
+This $d_{m(x,y)}(x, y)$ is the result of the quarter Laplacian filtering as explained in the paper.
 
-    $ python3 main.py [image_name]
+#### Advantages of QWF
+Using QWFs have significant advantages over classical full window filters such as:
+- QWFs can preserve edges better allowing discontinuity in results producing sharp edges compared to their full 
+window versions.
+- QWFs have smaller support region (2X2 in this case) compared to standard filters (3X3 or higher). Smaller
+support region indicates more local geometric information.
+- QWFs can be implemented using box filter, leading to high performance.
 
-It is important to note that we are using Python3 for the implementation purpose. Also, user can provide image name with
-its path as an optional parameter to <i>main.py</i> which will be considered as base original image and all operations 
-will be performed on that image. If parameter is not provided, all smoothing operations will be performed on this 
-[standard camera-man image](https://scikit-image.org/docs/stable/api/skimage.data.html#skimage.data.camera) which is 
-similar to the one shown in paper of ICIP1.
+## Implementation
+The filter can be implemented using 2X2 box filter as follows:
 
-### Authors
-Chirag Vaghela
+<pre>
+     [1/3, 1/3, 0]           [1, 1, 0]       [0,  0,  0]
+K1 = [1/3, -1,  0]   =   1/3 [1, 1, 0] - 4/3 [0,  1,  0]
+     [0,   0,   0]           [0, 0, 0]       [0,  0,  0]
+</pre>
+
+A 2×2 box filter (without normalization) is used to compute the sum over each 2×2 region. Then for each pixel $(i, j)$, 
+where full 2X2 block exists, it computes
+
+```math
+response(i,j) = \frac{1}{3} . box\_sum(i, j) - \frac{4}{3} . U(i+1, j+1)
+```
+
+### faster implementation leveraging overlapped support region
+The QLF requires four directional responses (from four quarter windows $k_i , \forall i = 1,...,4$). Therefore,
+- Instead of convolving four separate kernels, the input image is rotated in 0°, 90°, 180°, and 270° increment.
+- Apply the fast $K_1$ response, then rotate each result back. This technique exploits the overlapping support so that 
+the same box filter computation can be reused after simple rotations.
+
+<img src="img/overlapped_region.png" width="200"><br/>
+Fig3: Overlapped support regions for different locations can be used to reduce the computation. e.g. the bottom-right
+region for the red dot is exactly the upper left region for the yellow dot.<br/><br/>
+
+- All four directional responses are stacked. For each pixel, the response with the smallest absolute value is selected 
+(mimicking the non–linear min–selection step in QLF).
+- The selected response is then either added to the image (diffusion) or used as the direct output, 
+depending on the `add_to_input` flag for the filter.
+
+Because of the overlapping support region and reusability via rotation, we perform only one box filtering per rotated 
+version instead of four independent convolutions. This achieves nearly the same runtime as a conventional Laplacian 
+filter.
+
+## Experimentation
+
+Conducted experiments for quantitative evaluation and Low light enhancement use case demonstration.
+
+### Quantitative Evaluation
+The quantitative evaluation is performed using following metrics:
+
+#### 1. PSNR (Peak Signal-to-Noise Ratio)
+How much the filtered image deviates from the original. It assumes the original is the “ground truth” and higher values 
+mean the processed image is closer (less distorted).
+
+```math
+PSNR = 10 . log_{10}(\frac{MAX^2}{MSE})
+```
+
+Where, $MAX$ is the maximum possible pixel value (e.g., 255) and $MSE$ is the Mean Squared Error between the original 
+and processed images
+
+High PSNR means good preservation of image details and low PSNR means high distortion introduced by filtering.
+
+#### 2. SSIM (Structural Similarity Index)
+How structurally similar two images are beyond just pixel-wise error. It considers Luminance, Contrast, Structure
+
+Range:
+```math
+SSIM \in [0, 1]
+```
+
+When, $SSIM$ is $1$ means perfectly similar and $\lt1$ concludes some structural differences
+
+#### 3. EPI (Edge Preservation Index)
+It measures how well the edges in the image are preserved after filtering. It compares the edge maps 
+(e.g., from Sobel or Canny) of the original vs. filtered images.
+
+For implementation, applied edge detection (Canny) to both original and filtered images. Then, Compared the edge 
+strength or patterns using Dice coefficient between binary edge maps.
+
+Higher EPI means the filtering preserved more of the original edges.
+
+#### Summary of metrics used for quantitative analysis
+| Metric | Measures             | Range      | Good Value | Notes                                     |
+|--------|----------------------|------------|------------|-------------------------------------------|
+| PSNR   | Pixel-wise fidelity  | 0 - inf dB | > 30 dB    | Doesn’t reflect perceptual quality well   |
+| SSIM   | Structural similarity| 0 - 1      | > 0.9      | Closer to 1 is better                     |
+| EPI    | Edge preservation    | 0 - 1      | > 0.7      | Custom metric; reflects paper's goal well |
+
+### Low Light Enhancement Use Case Demonstration
+The Quarter Laplacian Filter (QLF) was applied to 500 densely low-light images sourced from the
+[Kaggle dataset](https://www.kaggle.com/datasets/soumikrakshit/lol-dataset). For each image, three quantitative metrics
+PSNR, SSIM and EPI were computed after applying both the QLF and the standard Laplacian filter. Finally, the average 
+values of all three metrics were calculated across the entire dataset to provide a comprehensive comparison of the 
+two filtering approaches.
+
+## Results
+
+<img src="img/low_light_exp_result.png" width="900"><br/>
+Fig5: Low-Light Enhancement. Left-to-right: original, gamma corrected, QLF and standard Laplace filters<br/><br/>
+
+Performance comparison of QLF vs Laplace filter using PSNR, SSIM and EPI on 500 low-light images:
+
+| Metric | QLF   | Laplacian | 
+|--------|-------|-----------|
+| PSNR   | 19.34 | 18.23     | 
+| SSIM   | 0.47  | 0.15      |
+| EPI    | 0.08  | 0.03      |
+
+QLF consistently outperforms the standard Laplacian filter across all three metrics:
+- Higher PSNR suggests better noise suppression and overall signal fidelity.
+- Much better SSIM (Structural Similarity) shows QLF preserves perceptual features like edges and texture more 
+effectively.
+- EPI (Edge Preservation Index) is higher for QLF, which aligns with the intent of QLF being edge-aware.
+
+## How to Run
+```
+python main.py
+```
+
+## Future Prospects
+- reduce run time
+- perform statistical significance test
+- explore more quantitative matrices
+
