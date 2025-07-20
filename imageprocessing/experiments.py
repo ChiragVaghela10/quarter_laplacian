@@ -18,15 +18,15 @@ class QuantitativeAnalysis(object):
     def compute_psnr(original: np.ndarray, processed: np.ndarray) -> float:
         """
         Compute the Peak Signal-to-Noise Ratio (PSNR) between the original and processed images.
+        Note: Ensure images are in float32 for precision in the calculation.
 
         Parameters:
-        original (np.ndarray): The original image (float32 or uint8) assumed to be in [0, 255].
-        processed (np.ndarray): The processed image (float32 or uint8) assumed to be in [0, 255].
+        original: The original image (float32 or uint8) assumed to be in [0, 255].
+        processed: The processed image (float32 or uint8) assumed to be in [0, 255].
 
         Returns:
-        float: The PSNR value in decibels (dB). A higher PSNR indicates better fidelity.
+        psnr: The PSNR value in decibels (dB). A higher PSNR indicates better fidelity.
         """
-        # Ensure images are in float32 for precision in the calculation.
         original = original.astype(np.float32)
         processed = processed.astype(np.float32)
 
@@ -57,7 +57,7 @@ class QuantitativeAnalysis(object):
         """
         Compute the Edge Preservation Index (EPI) between the original and processed images.
         This implementation uses a simple Dice coefficient computed on binary edge maps
-        obtained via the Canny edge detector.
+        obtained via the Canny edge detector (The threshold values should be tuned for better fidelity).
 
         Parameters:
             original (np.ndarray): The original image (float32 or uint8) assumed to be in [0, 255].
@@ -67,7 +67,6 @@ class QuantitativeAnalysis(object):
             float: A value between 0 and 1 indicating edge similarity, where higher values indicate
                    better edge preservation.
         """
-        # Apply Canny edge detector (thresholds can be tuned)
         edges_orig = cv.Canny(original, threshold1=50, threshold2=150)
         edges_proc = cv.Canny(processed, threshold1=50, threshold2=150)
 
@@ -137,7 +136,6 @@ class LowLightEnhancement(object):
             "laplace": laplace
         }
 
-    @staticmethod
     def save_experiment(results: dict, img_path: Path) -> None:
         plt.figure(figsize=(10, 3))
         for idx, title in enumerate(results.keys()):
