@@ -8,16 +8,15 @@ class QuarterLaplacian(object):
     def __init__(self, iterations: int = 1, add_to_input: bool = True) -> None:
         """
         Parameters:
-        iterations (int): Number of diffusion iterations.
-        add_to_input (bool): Whether to add the computed QLF response to the input (diffusion).
+        iterations: Number of diffusion iterations.
+        add_to_input: Whether to add the computed QLF response to the input (diffusion).
         """
         self.iterations = iterations
         self.add_to_input = add_to_input
 
     def _rotate_image_cv(self, img: np.ndarray, k: int) -> np.ndarray:
         """
-        Rotate image by k * 90 degrees counter-clockwise using OpenCV.
-        k can be 0, 1, 2, or 3.
+        Rotate image by k * 90 degrees counter-clockwise using OpenCV. Where, k in range [0, 3].
         """
         if k % 4 == 0:
             return img

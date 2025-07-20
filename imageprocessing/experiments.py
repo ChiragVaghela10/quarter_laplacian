@@ -57,7 +57,7 @@ class QuantitativeAnalysis(object):
         """
         Compute the Edge Preservation Index (EPI) between the original and processed images.
         This implementation uses a simple Dice coefficient computed on binary edge maps
-        obtained via the Canny edge detector (The threshold values should be tuned for better fidelity).
+        obtained via the Canny Edge Detector (The threshold values should be tuned for better fidelity).
 
         Parameters:
             original (np.ndarray): The original image (float32 or uint8) assumed to be in [0, 255].
@@ -86,7 +86,6 @@ class QuantitativeAnalysis(object):
         dice = (2.0 * intersection) / float(sum_edges)
         return dice
 
-    # @staticmethod
     def analyse(self) -> dict:
         qlf_psnr = self.compute_psnr(self.base_img, self.qlf_img)
         laplace_psnr = self.compute_psnr(self.base_img, self.laplace_img)
@@ -108,16 +107,49 @@ class QuantitativeAnalysis(object):
 
 
 class LowLightEnhancement(object):
+    """
+    This class enhances low-light images by applying filters. Three different filters specified below are performed
+    on the low light image for comparative study of the filters:
+    1. Gamma Correction
+    2. QLF
+    3. Laplace Correction
+    """
     def __init__(self, qlf_filter: QuarterLaplacian = None, gamma: float = 1.5) -> None:
+        """
+        Parameters:
+            qlf_filter: QuarterLaplacian (QuarterLaplacian) filter to apply on the low light image
+            gamma: The gamma value to apply to the low light image for gamma correction
+        """
         self.qlf_filter = qlf_filter
         self.gamma = gamma
 
     def gamma_correction(self, image: np.ndarray) -> np.ndarray:
+        """
+        Apply the gamma correction to the low light image.
+        Parameters:
+            image : The low light image to apply the gamma correction to
+        Returns:
+            np.ndarray: The low light image with gamma corrected applied.
+        """
         inv_gamma = 1.0 / self.gamma
-        table = np.array([((i / float(MAX_PIXEL_VALUE)) ** inv_gamma) * MAX_PIXEL_VALUE for i in np.arange(256)]).astype("uint8")
+        table = np.array([((i / float(MAX_PIXEL_VALUE)) ** inv_gamma) * MAX_PIXEL_VALUE
+                          for i in np.arange(256)]).astype("uint8")
         return cv.LUT(image, table)
 
     def enhance(self, image: np.ndarray) -> dict:
+        """
+        Apply the low light enhancements filters to the low light image.
+
+        There are three different filters available:
+        1. Gamma Correction
+        2. QLF
+        3. Laplace Correction
+
+        Parameters:
+            image: The low light image to apply the enhancement to
+        Returns:
+            dict: The low light enhancement results with original image.
+        """
         gamma_corrected = self.gamma_correction(image.copy())
 
         if self.qlf_filter is not None:
@@ -136,6 +168,7 @@ class LowLightEnhancement(object):
             "laplace": laplace
         }
 
+    @staticmethod
     def save_experiment(results: dict, img_path: Path) -> None:
         plt.figure(figsize=(10, 3))
         for idx, title in enumerate(results.keys()):
