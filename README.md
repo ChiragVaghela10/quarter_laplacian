@@ -3,7 +3,7 @@
 This repository implements Quarter Laplacian Filter for Edge Aware Image Processing using the approach mentioned in this
 [paper](https://github.com/ChiragVaghela10/quarter_laplacian/blob/refactoring/data/ICIP%201%20-%20QUARTER%20LAPLACIAN%20FILTER%20FOR%20EDGE%20AWARE%20IMAGE%20PROCESSING.pdf).
 
-<img src="img/qlf_vs_std_laplace.png" width="900"><br/>
+<img src="img/qlf_result.png" width="900"><br/>
 Fig4: Visual comparison of effects of Quarter Laplacian and Laplacian Filter<br/><br/>
 
 ## Overview
