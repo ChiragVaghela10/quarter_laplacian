@@ -157,7 +157,7 @@ class LowLightEnhancement(object):
         else:
             raise NameError('No qlf filter was provided.')
 
-        laplace = cv.Laplacian(src=gamma_corrected, ddepth=cv.CV_32F, dst=np.zeros_like(gamma_corrected), ksize=3,
+        laplace = cv.Laplacian(src=gamma_corrected, ddepth=-1, dst=np.zeros_like(gamma_corrected), ksize=3,
                                borderType=cv.BORDER_REPLICATE)
         laplace = cv.convertScaleAbs(laplace)
 
