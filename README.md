@@ -3,8 +3,9 @@
 This repository implements Quarter Laplacian Filter for Edge Aware Image Processing using the approach mentioned in this
 [paper](https://github.com/ChiragVaghela10/quarter_laplacian/blob/refactoring/data/ICIP%201%20-%20QUARTER%20LAPLACIAN%20FILTER%20FOR%20EDGE%20AWARE%20IMAGE%20PROCESSING.pdf).
 
-<img src="img/qlf_result.png" width="900"><br/>
-Fig4: Visual comparison of effects of Quarter Laplacian and Laplacian Filter<br/><br/>
+<img src="img/comparison.png" width="900"><br/>
+Fig1: Visualization of Quarter Laplacian Filter compared to standard Laplacian Filter applied for multiple 
+iterations<br/><br/>
 
 ## Overview
 Image smoothing is the fundamental operation in image processing. We use it to remove image details or noise in the
@@ -37,7 +38,7 @@ and standard discrete Laplacian Kernels are as follows:
 </pre>
 
 <img src="img/laplacian_operator_spectral_analysis.png" width="400"><br/>
-Fig1: Spectral analysis of discrete Laplacian operators<br/><br/>
+Fig2: Spectral analysis of discrete Laplacian operators<br/><br/>
 
 The right kernel is the most isotropic one and is chosen for implementation in this repository. The paper proposes to 
 use quarter window of discrete Laplacian operator.  Therefore, the quarter Laplacian filters would be as follows:
@@ -49,7 +50,7 @@ K1 = [1/3, -1,  0] , K2 = [0,  -1, 1/3]   K3 = [0,  -1, 1/3] , K4 = [1/3,  -1, 0
 </pre>
 
 <img src="img/quarter_windows.png" width="500"><br/>
-Fig2: four quarter windows for the center location (red dot)<br/><br/>
+Fig3: four quarter windows for the center location (red dot)<br/><br/>
 
 We would obtain four feature maps from these kernels. 
 
@@ -96,7 +97,7 @@ The QLF requires four directional responses (from four quarter windows $k_i , \f
 the same box filter computation can be reused after simple rotations.
 
 <img src="img/overlapped_region.png" width="200"><br/>
-Fig3: Overlapped support regions for different locations can be used to reduce the computation. e.g. the bottom-right
+Fig4: Overlapped support regions for different locations can be used to reduce the computation. e.g. the bottom-right
 region for the red dot is exactly the upper left region for the yellow dot.<br/><br/>
 
 - All four directional responses are stacked. For each pixel, the response with the smallest absolute value is selected 
