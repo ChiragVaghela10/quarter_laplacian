@@ -1,10 +1,20 @@
+from abc import ABC
 import numpy as np
 import cv2 as cv
 
 
-class QuarterLaplacian(object):
+class Filter(ABC):
     def __init__(self) -> None:
         pass
+
+    def apply_filter(self, U: np.ndarray, iterations: int = 10, alpha: float = 0.2) -> np.ndarray:
+        """Apply standard Laplacian diffusion for given iterations."""
+        pass
+
+
+class QuarterLaplacian(Filter):
+    def __init__(self) -> None:
+        super().__init__()
 
     def _compute_convolution_kernels(self, U: np.ndarray) -> np.ndarray:
         """
@@ -52,7 +62,7 @@ class QuarterLaplacian(object):
         qlf_response = np.take_along_axis(stacked_kernels, min_indices[None, ...], axis=0).squeeze(0)
         return qlf_response
 
-    def apply_filter(self, U: np.ndarray, iterations = 10) -> np.ndarray:
+    def apply_filter(self, U: np.ndarray, iterations: int = 10, alpha = 0.5) -> np.ndarray:
         """
         This function applies the QLF filter to the input image U.
 
@@ -61,45 +71,44 @@ class QuarterLaplacian(object):
         Returns:
             result: grayscale image with pixel values rescaled in range [0, 255].
         """
-        # print(f'Base image values in range({np.max(U)}, {np.min(U)})')
+        print(f'Base image values in range({np.max(U)}, {np.min(U)})')
         U_out = U.copy().astype(np.float32) / 255.0 if np.max(U) > 1.0 else U.copy().astype(np.float32)
 
         # perform diffusion process U^t+1 = U^t + QuarterLaplacianFilter(U^t) [refer equation (7) for details]
         for _ in range(iterations):
-            U_out += self._compute_qlf_result(U_out)
+            U_out += alpha * self._compute_qlf_result(U_out)
 
         U_out = np.clip(U_out, 0, 1)
         result = (U_out * 255).astype(np.uint8)
         return result
 
 
-class LaplacianFilter(object):
+class LaplacianFilter(Filter):
     def __init__(self) -> None:
-        self.time_step = None
+        super().__init__()
         self.kernel = (1/12) * np.array([
             [1, 2, 1],
             [2, -12, 2],
             [1, 2, 1]
         ], dtype=np.float32)
 
-    def apply_filter(self, U: np.ndarray, iterations: int = 10, time_step: float = 0.2) -> np.ndarray:
+    def apply_filter(self, U: np.ndarray, iterations: int = 10, alpha: float = 0.2) -> np.ndarray:
         """Apply standard Laplacian diffusion for given iterations.
 
         Args:
             U (np.ndarray): Input image (float32).
             iterations (int): Number of diffusion steps.
-            time_step (float): Time step value in discrete diffusion equation. Defaults to 0.2.
+            alpha (float): Time step value in discrete diffusion equation. Defaults to 0.2.
 
         Returns:
             result: Filtered image in range [0, 255] with dtype np.uint8.
         """
-        self.time_step = time_step
-        # print(f'Base image values in range({np.max(U)}, {np.min(U)})')
+        print(f'Base image values in range({np.max(U)}, {np.min(U)})')
         U_out = U.copy().astype(np.float32) / 255.0 if np.max(U) > 1.0 else U.copy().astype(np.float32)
 
         for _ in range(iterations):
             lap = cv.filter2D(U_out, ddepth=-1, kernel=self.kernel, borderType=cv.BORDER_REPLICATE)
-            U_out += self.time_step * lap
+            U_out += alpha * lap
 
         U_out = np.clip(U_out, 0, 1)
         result = (U_out * 255).astype(np.uint8)
