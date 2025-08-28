@@ -159,15 +159,13 @@ Higher EPI means the filtering preserved more of the original edges.
 | EPI    | Edge preservation    | 0 - 1      | > 0.7      | Custom metric; reflects paper's goal well |
 
 ### Low Light Enhancement Use Case Demonstration
-The pipeline implemented for enhancement of low-light image:
+The pipeline implemented for enhancement of low-light image in following steps:
 
-```math
-1. For each iamge, convert low-light image to YCrCb color space
+1. For each image, convert low-light image to YCrCb color space
 2. Approximate gain using luminance (Y) of low-light and corresponding base image
 3. Restore low-light image using approximated gain
-4. Apply QLF/Laplace filter
+4. Apply QLF or Laplace filter
 5. Evaluate metrics
-```
 
 The Quarter Laplacian Filter (QLF) was applied to 500 low-light images of the
 [LOL dataset](https://www.kaggle.com/datasets/soumikrakshit/lol-dataset). For each image, three quantitative metrics
