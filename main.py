@@ -21,7 +21,7 @@ IMG_DIR = ROOT_PATH / 'img'
 LOW_LIGHT_IMG_DIR1 = ROOT_PATH / 'lol-dataset/lol_dataset/our485/low'
 HIGH_LIGHT_IMG_DIR1 = ROOT_PATH / 'lol-dataset/lol_dataset/our485/high'
 # LOW_LIGHT_IMG_DIR2 = ROOT_PATH / 'lol-dataset/lol_dataset/eval15/low'
-# LOW_LIGHT_IMG_DIR2 = ROOT_PATH / 'lol-dataset/lol_dataset/eval15/high'
+# HIGH_LIGHT_IMG_DIR2 = ROOT_PATH / 'lol-dataset/lol_dataset/eval15/high'
 
 cameraman_img = cv.imread(str(IMG_DIR / 'cameraman.png'), cv.IMREAD_UNCHANGED)
 assert cameraman_img is not None, "file could not be read"

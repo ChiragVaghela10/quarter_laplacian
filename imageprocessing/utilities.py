@@ -38,26 +38,24 @@ def save_filter_comparison(base_img: np.ndarray,
 
 
 def plot_metric_comparison(metric_dict, result_path: Path):
-    metrics = list(metric_dict.keys())
-    qlf_values = [metric_dict[m][0] for m in metrics]
-    lap_values = [metric_dict[m][1] for m in metrics]
+    fig, axes = plt.subplots(1, 3, figsize=(12, 4))
 
-    x = range(len(metrics))
-    width = 0.35
+    metrics = [("PSNR (dB)", metric_dict['PSNR'][0], metric_dict['PSNR'][1], (22, 45)),
+               ("SSIM", metric_dict['SSIM'][0], metric_dict['SSIM'][1], (0.7, 1.0)),
+               ("EPI", metric_dict['EPI'][0], metric_dict['EPI'][1], (0.1, 0.8))]
 
-    fig, ax = plt.subplots(figsize=(8, 5))
-    ax.bar([i - width/2 for i in x], qlf_values, width, label='QLF')
-    ax.bar([i + width/2 for i in x], lap_values, width, label='Laplacian')
+    for ax, (title, q, l, ylim) in zip(axes, metrics):
+        bars = ax.bar([0, 1], [q, l], tick_label=["QLF", "Laplacian"])
+        ax.set_title(title)
+        ax.set_ylim(*ylim)
+        ax.grid(True, axis="y")
+        ax.bar_label(bars, fmt="%.3f", padding=3)
 
-    ax.set_ylabel('Score')
-    ax.set_title('QLF vs Laplacian Comparison')
-    ax.set_xticks(list(x))
-    ax.set_xticklabels(metrics)
-    ax.legend()
-    ax.grid(True, linestyle='--', alpha=0.5)
-
-    plt.tight_layout()
+    fig.suptitle("Avg. quantitative results for Low Light Enhancement on LOL dataset", fontsize=14)
+    plt.tight_layout(rect=[0, 0, 1, 0.95])  # leave space for suptitle
     plt.savefig(result_path)
+    plt.close()
+
 
 def plot_filters_against_alphas(filters_performance: dict, alphas: np.ndarray, img_path: Path) -> None:
     plt.suptitle('Low Light Enhancement', y=0.9)
