@@ -8,10 +8,8 @@ import numpy as np
 from tqdm import tqdm
 
 from constants import ITERATIONS, TIME_STEP
-# from constants import DARKEN_FACTOR
 from imageprocessing.filters import QuarterLaplacian, LaplacianFilter
 from imageprocessing.experiments import LowLightEnhancement
-# from imageprocessing.low_light_simulation import DegradeSimulation
 from imageprocessing.quantitative_analysis import QuantitativeAnalysis
 from imageprocessing.utilities import plot_metric_comparison, save_filter_comparison, plot_filters_against_alphas
 
@@ -20,11 +18,10 @@ from imageprocessing.utilities import plot_metric_comparison, save_filter_compar
 
 ROOT_PATH = Path(__file__).parent
 IMG_DIR = ROOT_PATH / 'img'
-# INDEED_DATASET = ROOT_PATH / 'indeed_dataset_downsized/'
-# SHENZHEN_DATASET = ROOT_PATH / 'shenzhen/'
 LOW_LIGHT_IMG_DIR1 = ROOT_PATH / 'lol-dataset/lol_dataset/our485/low'
 HIGH_LIGHT_IMG_DIR1 = ROOT_PATH / 'lol-dataset/lol_dataset/our485/high'
 # LOW_LIGHT_IMG_DIR2 = ROOT_PATH / 'lol-dataset/lol_dataset/eval15/low'
+# LOW_LIGHT_IMG_DIR2 = ROOT_PATH / 'lol-dataset/lol_dataset/eval15/high'
 
 cameraman_img = cv.imread(str(IMG_DIR / 'cameraman.png'), cv.IMREAD_UNCHANGED)
 assert cameraman_img is not None, "file could not be read"
@@ -139,23 +136,3 @@ metric_results = {
 }
 
 plot_metric_comparison(metric_results, result_path=IMG_DIR / 'metric_comparison.png')
-
-# Quantitative analysis by comparing PSNR, SSIM, EPI metric values between QLF and baseline Laplacian filter
-# degradation = DegradeSimulation()
-# low_light_cameraman_img = degradation.simulate_low_light(base_image=cameraman_img, darken_factor=DARKEN_FACTOR,
-#                                                          blur_sigma=0, noise_sigma_pre=0)    # Try with diff sigmas
-# restored_cameraman_img = degradation.restore_exposure(low_light_image01=low_light_cameraman_img,
-#                                                       darken_factor=DARKEN_FACTOR)
-# qlf_img = qlf.apply_filter(U=restored_cameraman_img, iterations=10)
-# laplace_img = laplacian.apply_filter(U=restored_cameraman_img, iterations=10)
-# cameraman_quant_analysis = QuantitativeAnalysis(base_img=cameraman_img, qlf_img=qlf_img, laplace_img=laplace_img)
-# cameraman_analysis_result = cameraman_quant_analysis.analyse()
-# cameraman_quant_analysis.show_results(result=cameraman_analysis_result)
-# plot_metric_comparison(
-#     metric_dict={
-#         "PSNR": (cameraman_analysis_result['qlf_psnr'], cameraman_analysis_result['laplace_psnr']),
-#         "SSIM": (cameraman_analysis_result['qlf_ssim'], cameraman_analysis_result['laplace_ssim']),
-#         "EPI":  (cameraman_analysis_result['qlf_epi'], cameraman_analysis_result['laplace_epi']),
-#     },
-#     result_path=IMG_DIR / 'metric_comparison_on_cameraman_img.png'
-# )

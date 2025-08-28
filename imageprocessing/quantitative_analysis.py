@@ -16,8 +16,7 @@ class QuantitativeAnalysis(object):
 
     @staticmethod
     def compute_psnr(original: np.ndarray, processed: np.ndarray) -> float:
-        """
-        Computes the Peak Signal-to-Noise Ratio (PSNR) between the original and processed images.
+        """Computes the Peak Signal-to-Noise Ratio (PSNR) between the original and processed images.
 
         Parameters:
             original: The original image assumed to be in [0, 255] and of type uint8.
@@ -31,8 +30,7 @@ class QuantitativeAnalysis(object):
 
     @staticmethod
     def compute_ssim(original: np.ndarray, processed: np.ndarray) -> float:
-        """
-        Compute the Structural Similarity Index (SSIM) between the original and processed images.
+        """Compute the Structural Similarity Index (SSIM) between the original and processed images.
 
         Parameters:
             original (np.ndarray): The reference image (float32 or uint8) assumed to be in [0, 255].
@@ -46,8 +44,7 @@ class QuantitativeAnalysis(object):
 
     @staticmethod
     def compute_epi(original: np.ndarray, processed: np.ndarray) -> float:
-        """
-        Computes the Edge Preservation Index (EPI) between the original and processed images.
+        """Computes the Edge Preservation Index (EPI) between the original and processed images.
 
         This implementation uses a simple Dice coefficient computed on binary edge maps
         obtained via the Canny Edge Detector (The threshold values should be tuned for better fidelity).
@@ -81,20 +78,18 @@ class QuantitativeAnalysis(object):
         return dice_score
 
     def analyse(self, base_img: np.ndarray, qlf_img: np.ndarray, laplace_img: np.ndarray) -> dict:
-        # assert self.base_img.shape == self.qlf_img.shape == self.laplace_img.shape, \
-        #     "All images must have equal shape for fair comparison"
         base_img_luma = self.to_luma_u8(base_img)
         qlf_img_luma = self.to_luma_u8(qlf_img)
         laplace_img_luma = self.to_luma_u8(laplace_img)
 
-        qlf_psnr = self.compute_psnr(base_img_luma, qlf_img_luma) # for qlf_img_luma in self.qlf_img]
-        laplace_psnr = self.compute_psnr(base_img_luma, laplace_img_luma) # for laplace_img_luma in self.laplace_img]
+        qlf_psnr = self.compute_psnr(base_img_luma, qlf_img_luma)
+        laplace_psnr = self.compute_psnr(base_img_luma, laplace_img_luma)
 
-        qlf_ssim = self.compute_ssim(base_img_luma, qlf_img_luma) # for qlf_img_luma in self.qlf_img]
-        laplace_ssim = self.compute_ssim(base_img_luma, laplace_img_luma) # for laplace_img_luma in self.laplace_img]
+        qlf_ssim = self.compute_ssim(base_img_luma, qlf_img_luma)
+        laplace_ssim = self.compute_ssim(base_img_luma, laplace_img_luma)
 
-        qlf_epi = self.compute_epi(base_img_luma, qlf_img_luma) # for qlf_img_luma in self.qlf_img]
-        laplace_epi = self.compute_epi(base_img_luma, laplace_img_luma) # for laplace_img_luma in self.laplace_img]
+        qlf_epi = self.compute_epi(base_img_luma, qlf_img_luma)
+        laplace_epi = self.compute_epi(base_img_luma, laplace_img_luma)
 
         return {
             'qlf_psnr': qlf_psnr,

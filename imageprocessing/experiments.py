@@ -9,12 +9,7 @@ from constants import MAX_PIXEL_VALUE
 
 
 class LowLightEnhancement(object):
-    """
-    This class enhances low-light images by applying filters. Three different filters specified below are performed
-    on the low light image for comparative study of the filters:
-    1. Gamma Correction
-    2. QLF
-    3. Laplace Correction
+    """This class enhances low-light images by restoring luma channel. Then applies a filter on the restored image.
     """
     def __init__(self) -> None:
         pass
@@ -22,8 +17,8 @@ class LowLightEnhancement(object):
     @staticmethod
     def estimate_gain_from_pair(low, ref, p_lo=5, p_hi=95, eps=1e-6, cap=(0.5, 8.0)):
         # 1) luminance (Y) in YCrCb
-        Y_low = cv.cvtColor(low, cv.COLOR_BGR2YCrCb)[:, :, 0].astype(np.float32) / 255.0
-        Y_ref = cv.cvtColor(ref, cv.COLOR_BGR2YCrCb)[:, :, 0].astype(np.float32) / 255.0
+        Y_low = cv.cvtColor(low, cv.COLOR_BGR2YCrCb)[:, :, 0].astype(np.float32) / MAX_PIXEL_VALUE
+        Y_ref = cv.cvtColor(ref, cv.COLOR_BGR2YCrCb)[:, :, 0].astype(np.float32) / MAX_PIXEL_VALUE
 
         # 2) midtone mask (avoid near-black & near-white, and zeros)
         lo = np.percentile(Y_low, p_lo)
@@ -42,8 +37,8 @@ class LowLightEnhancement(object):
     def restore_exposure_luma_with_gain(low, k):
         ycc = cv.cvtColor(low, cv.COLOR_BGR2YCrCb)
         Y, Cr, Cb = cv.split(ycc)
-        Yf = np.clip((Y.astype(np.float32) / 255.0) * k, 0.0, 1.0)
-        Yr = (Yf * 255.0 + 0.5).astype(np.uint8)
+        Yf = np.clip((Y.astype(np.float32) / MAX_PIXEL_VALUE) * k, 0.0, 1.0)
+        Yr = (Yf * MAX_PIXEL_VALUE + 0.5).astype(np.uint8)
         restored = cv.cvtColor(cv.merge([Yr, Cr, Cb]), cv.COLOR_YCrCb2BGR)
         return restored
 
