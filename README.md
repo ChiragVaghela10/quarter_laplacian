@@ -4,11 +4,11 @@ This repository implements Quarter Laplacian Filter (QLF) for Edge Aware Image P
 in this
 [paper](https://github.com/ChiragVaghela10/quarter_laplacian/blob/refactoring/data/ICIP%201%20-%20QUARTER%20LAPLACIAN%20FILTER%20FOR%20EDGE%20AWARE%20IMAGE%20PROCESSING.pdf).
 
-<img src="img/comparison.png" width="900"><br/>
-Fig1: Results of Quarter Laplacian Filter compared to standard Laplacian Filter applied for multiple iterations<br/>
-
 Experiments were also carried on enhancing low-light images of LOL dataset using QLF and compared against isotropic 
 Laplacian filter. The quantitative analysis is performed using PSNR, SSIM, and EPI as evaluation metrics.
+
+<img src="img/comparison.png" width="900"><br/>
+Fig1: Results of Quarter Laplacian Filter compared to standard Laplacian Filter applied for multiple iterations<br/>
 
 ## Overview
 Image smoothing is the fundamental operation in image processing. We use it to remove image details or noise in the
@@ -175,8 +175,8 @@ PSNR, SSIM, and EPI were computed after applying both the QLF and the standard L
 Finally, the average values of all three metrics were calculated across the entire dataset to provide a 
 comprehensive comparison of the two filtering approaches.
 
-The robustness of QLF is also presented for various values of alpha ($c$) in the diffusion process ranging 
-(0.1, 0.2, ..., 1.0).
+The robustness of QLF is also compared against standard Laplacian Filter for various values of alpha ($c$) in the 
+diffusion process ranging (0.1, 0.2, ..., 1.0).
 
 ## Results
 
@@ -200,7 +200,7 @@ be lost.
 meaning it retains edge details more effectively than the standard Laplacian, which is crucial for maintaining the 
 sharpness and clarity of objects.
 
-The following results are obtained for c = [0.1, 0.2, ..., 1.0] in discrete diffusion equation mentioned above, and
+The following results are obtained for $c$ = [0.1, 0.2, ..., 1.0] in discrete diffusion equation mentioned above, and
 iterations = 10 for both filters:
 <br/><img src="img/filters_against_alphas.png" width="900"><br/>
 
@@ -210,6 +210,10 @@ It shows that laplacian filter becomes very unstable when aggressive filtering i
 ```
 python main.py
 ```
+
+## Citation
+Gong, Yuanhao & Tang, Wenming & Zhou, Lebin & Yu, Lantao & Qiu, Guoping. (2021). Quarter Laplacian Filter For Edge 
+Aware Image Processing. 1959-1963. 10.1109/ICIP42928.2021.9506503. 
 
 ## Future Prospects
 - Optimize execution time introducing GPU utilization 

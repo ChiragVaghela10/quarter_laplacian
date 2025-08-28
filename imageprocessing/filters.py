@@ -7,7 +7,7 @@ class Filter(ABC):
     def __init__(self) -> None:
         pass
 
-    def apply_filter(self, U: np.ndarray, iterations: int = 10, alpha: float = 0.2) -> np.ndarray:
+    def apply_filter(self, U: np.ndarray, iterations: int, alpha: float) -> np.ndarray:
         """Apply standard Laplacian diffusion for given iterations."""
         pass
 
@@ -62,7 +62,7 @@ class QuarterLaplacian(Filter):
         qlf_response = np.take_along_axis(stacked_kernels, min_indices[None, ...], axis=0).squeeze(0)
         return qlf_response
 
-    def apply_filter(self, U: np.ndarray, iterations: int = 10, alpha = 0.5) -> np.ndarray:
+    def apply_filter(self, U: np.ndarray, iterations: int = 10, alpha = 1) -> np.ndarray:
         """
         This function applies the QLF filter to the input image U.
 
@@ -71,7 +71,6 @@ class QuarterLaplacian(Filter):
         Returns:
             result: grayscale image with pixel values rescaled in range [0, 255].
         """
-        print(f'Base image values in range({np.max(U)}, {np.min(U)})')
         U_out = U.copy().astype(np.float32) / 255.0 if np.max(U) > 1.0 else U.copy().astype(np.float32)
 
         # perform diffusion process U^t+1 = U^t + QuarterLaplacianFilter(U^t) [refer equation (7) for details]
@@ -103,7 +102,6 @@ class LaplacianFilter(Filter):
         Returns:
             result: Filtered image in range [0, 255] with dtype np.uint8.
         """
-        print(f'Base image values in range({np.max(U)}, {np.min(U)})')
         U_out = U.copy().astype(np.float32) / 255.0 if np.max(U) > 1.0 else U.copy().astype(np.float32)
 
         for _ in range(iterations):

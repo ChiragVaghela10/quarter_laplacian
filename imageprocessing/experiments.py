@@ -47,14 +47,14 @@ class LowLightEnhancement(object):
         restored = cv.cvtColor(cv.merge([Yr, Cr, Cb]), cv.COLOR_YCrCb2BGR)
         return restored
 
-    def apply_filter_on_luma(self, img: np.ndarray, filter: Filter, alpha: float) -> np.ndarray:
+    def apply_filter_on_luma(self, img: np.ndarray, filter: Filter, iterations: int, alpha: float) -> np.ndarray:
         ycc = cv.cvtColor(img, cv.COLOR_BGR2YCrCb)
         Y, Cr, Cb = cv.split(ycc)
-        Y_out = filter.apply_filter(U=Y, alpha=alpha)
+        Y_out = filter.apply_filter(U=Y, iterations=iterations, alpha=alpha)
         enhanced = cv.cvtColor(cv.merge([Y_out, Cr, Cb]), cv.COLOR_YCrCb2BGR)
         return enhanced
 
-    def enhance(self, low: np.ndarray, ref: np.ndarray, filter: Filter, alpha: float) -> dict:
+    def enhance(self, low: np.ndarray, ref: np.ndarray, filter: Filter, iterations: int, alpha: float) -> dict:
         """Apply the low-light enhancements pipeline.
 
         The pipeline contains 3 main steps:
@@ -72,10 +72,12 @@ class LowLightEnhancement(object):
             and ehnaced images
         """
         k = self.estimate_gain_from_pair(low, ref)
-        print(f"Estimated gain: {k}")
         restored_img = self.restore_exposure_luma_with_gain(low, k)
 
-        enhanced_img = self.apply_filter_on_luma(img=restored_img.copy(), filter=filter, alpha=alpha)
+        enhanced_img = self.apply_filter_on_luma(img=restored_img.copy(),
+                                                 filter=filter,
+                                                 iterations=iterations,
+                                                 alpha=alpha)
 
         return {
             "low": low,

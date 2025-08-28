@@ -1,16 +1,17 @@
+import os
 import cv2 as cv
 # import opendatasets as od
 from statistics import mean
 from pathlib import Path
 
 import numpy as np
-from flatbuffers.packer import float32
 from tqdm import tqdm
 
-from constants import DARKEN_FACTOR
+from constants import ITERATIONS, TIME_STEP
+# from constants import DARKEN_FACTOR
 from imageprocessing.filters import QuarterLaplacian, LaplacianFilter
 from imageprocessing.experiments import LowLightEnhancement
-from imageprocessing.low_light_simulation import DegradeSimulation
+# from imageprocessing.low_light_simulation import DegradeSimulation
 from imageprocessing.quantitative_analysis import QuantitativeAnalysis
 from imageprocessing.utilities import plot_metric_comparison, save_filter_comparison, plot_filters_against_alphas
 
@@ -21,8 +22,8 @@ ROOT_PATH = Path(__file__).parent
 IMG_DIR = ROOT_PATH / 'img'
 # INDEED_DATASET = ROOT_PATH / 'indeed_dataset_downsized/'
 # SHENZHEN_DATASET = ROOT_PATH / 'shenzhen/'
-# LOW_LIGHT_IMG_DIR1 = ROOT_PATH / 'lol-dataset/lol_dataset/our485/low'
-# HIGH_LIGHT_IMG_DIR1 = ROOT_PATH / 'lol-dataset/lol_dataset/our485/high'
+LOW_LIGHT_IMG_DIR1 = ROOT_PATH / 'lol-dataset/lol_dataset/our485/low'
+HIGH_LIGHT_IMG_DIR1 = ROOT_PATH / 'lol-dataset/lol_dataset/our485/high'
 # LOW_LIGHT_IMG_DIR2 = ROOT_PATH / 'lol-dataset/lol_dataset/eval15/low'
 
 cameraman_img = cv.imread(str(IMG_DIR / 'cameraman.png'), cv.IMREAD_UNCHANGED)
@@ -35,7 +36,7 @@ normal_img = cv.imread(str(IMG_DIR / 'normal.png'), cv.IMREAD_UNCHANGED)
 assert normal_img is not None, "base image not be read"
 print(f'Loaded low-light image type: {low_light_img.dtype} and shape: {low_light_img.shape}')
 
-# Comparison of QLF and Laplace Filter
+# Visual comparison of QLF and Laplace Filter for different iterations
 qlf = QuarterLaplacian()
 qlf_imgs = {f'{i}': qlf.apply_filter(U=cameraman_img, iterations=i) for i in [10, 100, 1000]}
 
@@ -45,19 +46,21 @@ laplacian_imgs = {f'{i}': laplacian.apply_filter(U=cameraman_img, iterations=i) 
 save_filter_comparison(base_img=cameraman_img, qlf_results=qlf_imgs,
                        laplace_results=laplacian_imgs, result_path=IMG_DIR / 'comparison.png')
 
-# Low Light Image Enhancement Experiment
+# Filter performance comparison on enhancement of low-light images for different step size (time-step)
 low_light_experiment = LowLightEnhancement()
 alphas = np.arange(0.1, 1.1, 0.1)
 low_light_qlf_result = [low_light_experiment.enhance(
     low=low_light_img,
     ref=normal_img,
     filter=qlf,
+    iterations=ITERATIONS,
     alpha=alpha
 )['enhanced'] for alpha in alphas]
 low_light_laplace_result = [low_light_experiment.enhance(
     low=low_light_img,
     ref=normal_img,
     filter=laplacian,
+    iterations=ITERATIONS,
     alpha=alpha
 )['enhanced'] for alpha in alphas]
 
@@ -86,6 +89,57 @@ plot_filters_against_alphas(
     img_path=IMG_DIR / 'filters_against_alphas.png'
 )
 
+# Filter performance comparison on LOL dataset
+low_light_files = sorted([os.path.join(LOW_LIGHT_IMG_DIR1, fname) for fname in os.listdir(LOW_LIGHT_IMG_DIR1)])
+normal_light_files = sorted([os.path.join(LOW_LIGHT_IMG_DIR1, fname) for fname in os.listdir(HIGH_LIGHT_IMG_DIR1)])
+quant_metrics = {
+    "qlf_psnr": [],
+    "qlf_ssim": [],
+    "qlf_epi": [],
+    "laplace_psnr": [],
+    "laplace_ssim": [],
+    "laplace_epi": [],
+}
+for low, ref in tqdm(zip(low_light_files, normal_light_files), total=len(low_light_files), desc='Enhancing Images'):
+    low = cv.imread(low, cv.IMREAD_UNCHANGED)
+    ref = cv.imread(ref, cv.IMREAD_UNCHANGED)
+    qlf_result = low_light_experiment.enhance(
+        low=low, ref=ref, filter=qlf, iterations=ITERATIONS, alpha=TIME_STEP
+    )['enhanced']
+    laplacian_result = low_light_experiment.enhance(
+        low=low, ref=ref, filter=laplacian, iterations=ITERATIONS, alpha=TIME_STEP
+    )['enhanced']
+    qa_result = quant_analysis.analyse(base_img=ref, qlf_img=qlf_result, laplace_img=laplacian_result)
+    quant_metrics['qlf_psnr'].append(qa_result['qlf_psnr'])
+    quant_metrics['qlf_ssim'].append(qa_result['qlf_ssim'])
+    quant_metrics['qlf_epi'].append(qa_result['qlf_epi'])
+    quant_metrics['laplace_psnr'].append(qa_result['laplace_psnr'])
+    quant_metrics['laplace_ssim'].append(qa_result['laplace_ssim'])
+    quant_metrics['laplace_epi'].append(qa_result['laplace_epi'])
+
+avg_qlf_psnr = mean(quant_metrics['qlf_psnr'])
+avg_laplace_psnr = mean(quant_metrics['laplace_psnr'])
+avg_qlf_ssim = mean(quant_metrics['qlf_ssim'])
+avg_laplace_ssim = mean(quant_metrics['laplace_ssim'])
+avg_qlf_epi = mean(quant_metrics['qlf_epi'])
+avg_laplace_epi = mean(quant_metrics['laplace_epi'])
+
+print("\n=== Average Quantitative Results (via quant_result) ===")
+print(f"Avg QLF PSNR:     {avg_qlf_psnr:.2f}")
+print(f"Avg Laplace PSNR: {avg_laplace_psnr:.2f}")
+print(f"Avg QLF SSIM:     {avg_qlf_ssim:.2f}")
+print(f"Avg Laplace SSIM: {avg_laplace_ssim:.2f}")
+print(f"Avg QLF EPI:      {avg_qlf_epi:.2f}")
+print(f"Avg Laplace EPI:  {avg_laplace_epi:.2f}")
+
+metric_results = {
+    "PSNR": (avg_qlf_psnr, avg_laplace_psnr),
+    "SSIM": (avg_qlf_ssim, avg_laplace_ssim),
+    "EPI":  (avg_qlf_epi, avg_laplace_epi),
+}
+
+plot_metric_comparison(metric_results, result_path=IMG_DIR / 'metric_comparison.png')
+
 # Quantitative analysis by comparing PSNR, SSIM, EPI metric values between QLF and baseline Laplacian filter
 # degradation = DegradeSimulation()
 # low_light_cameraman_img = degradation.simulate_low_light(base_image=cameraman_img, darken_factor=DARKEN_FACTOR,
@@ -105,42 +159,3 @@ plot_filters_against_alphas(
 #     },
 #     result_path=IMG_DIR / 'metric_comparison_on_cameraman_img.png'
 # )
-
-# import os
-# low_light_files = sorted(os.listdir(LOW_LIGHT_IMG_DIR1))
-# quant_metrics = []
-# for file_name in tqdm(low_light_files, # sorted(INDEED_DATASET.glob('*.*')),
-#                        desc='Enhancing Images'):
-#     low_light_img = cv.imread(str(LOW_LIGHT_IMG_DIR1 / file_name), cv.IMREAD_GRAYSCALE)
-#     high_light_img = cv.imread(str(HIGH_LIGHT_IMG_DIR1 / file_name), cv.IMREAD_GRAYSCALE)
-#     low_light_exp_result = low_light_experiment.enhance(image=low_light_img)
-#     quant_analysis = QuantitativeAnalysis(
-#         base_img=high_light_img,
-#         qlf_img=low_light_exp_result['qlf'],
-#         laplace_img=low_light_exp_result['laplace'],
-#     )
-#     quant_analysis_result = quant_analysis.analyse()
-#     quant_metrics.append(quant_analysis_result)
-#
-# avg_qlf_psnr = mean(res['qlf_psnr'] for res in quant_metrics)
-# avg_laplace_psnr = mean(res['laplace_psnr'] for res in quant_metrics)
-# avg_qlf_ssim = mean(res['qlf_ssim'] for res in quant_metrics)
-# avg_laplace_ssim = mean(res['laplace_ssim'] for res in quant_metrics)
-# avg_qlf_epi = mean(res['qlf_epi'] for res in quant_metrics)
-# avg_laplace_epi = mean(res['laplace_epi'] for res in quant_metrics)
-#
-# print("\n=== Average Quantitative Results (via quant_result) ===")
-# print(f"Avg QLF PSNR:     {avg_qlf_psnr:.2f}")
-# print(f"Avg Laplace PSNR: {avg_laplace_psnr:.2f}")
-# print(f"Avg QLF SSIM:     {avg_qlf_ssim:.2f}")
-# print(f"Avg Laplace SSIM: {avg_laplace_ssim:.2f}")
-# print(f"Avg QLF EPI:      {avg_qlf_epi:.2f}")
-# print(f"Avg Laplace EPI:  {avg_laplace_epi:.2f}")
-#
-# metric_results = {
-#     "PSNR": (avg_qlf_psnr, avg_laplace_psnr),
-#     "SSIM": (avg_qlf_ssim, avg_laplace_ssim),
-#     "EPI":  (avg_qlf_epi, avg_laplace_epi),
-# }
-#
-# plot_metric_comparison(metric_results, result_path=IMG_DIR / 'metric_comparison.png')

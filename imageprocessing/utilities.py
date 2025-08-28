@@ -59,7 +59,7 @@ def plot_metric_comparison(metric_dict, result_path: Path):
     plt.tight_layout()
     plt.savefig(result_path)
 
-def plot_filters_against_alphas(filters_performance: dict, alphas: list, img_path: Path) -> None:
+def plot_filters_against_alphas(filters_performance: dict, alphas: np.ndarray, img_path: Path) -> None:
     plt.suptitle('Low Light Enhancement', y=0.9)
     fig, axes = plt.subplots(1, 3, figsize=(14, 4), sharex=False)
     ax1, ax2, ax3 = axes
