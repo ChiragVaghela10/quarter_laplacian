@@ -47,9 +47,19 @@ save_filter_comparison(base_img=cameraman_img, qlf_results=qlf_imgs,
 
 # Low Light Image Enhancement Experiment
 low_light_experiment = LowLightEnhancement()
-alphas = [0.1, 0.2, 0.3, 0.4, 0.5]
-low_light_qlf_result = [low_light_experiment.enhance(low=low_light_img, ref=normal_img, filter=qlf, alpha=alpha)['enhanced'] for alpha in alphas]
-low_light_laplace_result = [low_light_experiment.enhance(low=low_light_img, ref=normal_img, filter=laplacian, alpha=alpha)['enhanced'] for alpha in alphas]
+alphas = np.arange(0.1, 1.1, 0.1)
+low_light_qlf_result = [low_light_experiment.enhance(
+    low=low_light_img,
+    ref=normal_img,
+    filter=qlf,
+    alpha=alpha
+)['enhanced'] for alpha in alphas]
+low_light_laplace_result = [low_light_experiment.enhance(
+    low=low_light_img,
+    ref=normal_img,
+    filter=laplacian,
+    alpha=alpha
+)['enhanced'] for alpha in alphas]
 
 quant_analysis = QuantitativeAnalysis()
 qlf_psnrs, qlf_ssims, qlf_epis = [], [], []
