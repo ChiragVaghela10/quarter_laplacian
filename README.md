@@ -184,12 +184,6 @@ Performance comparison of QLF vs Laplace filter using PSNR, SSIM, and EPI on 500
 
 <br/><img src="img/metric_comparison.png" width="900"><br/>
 
-| Metric | QLF  | Laplacian | 
-|--------|------|-----------|
-| PSNR   | 44.3 | 41.2      | 
-| SSIM   | 0.97 | 0.94      |
-| EPI    | 0.6  | 0.2       |
-
 QLF consistently outperforms the standard Laplacian filter across all three metrics:
 - A higher PSNR generally indicates better image quality (less distortion). QLF achieves a +3.1 dB improvement over 
 the Laplacian filter, indicating that it produces less noisy or distorted outputs and preserves the original image 
