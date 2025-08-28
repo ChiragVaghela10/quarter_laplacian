@@ -1,11 +1,14 @@
 # Quarter Laplacian Filter
 
-This repository implements Quarter Laplacian Filter for Edge Aware Image Processing using the approach mentioned in this
+This repository implements Quarter Laplacian Filter (QLF) for Edge Aware Image Processing using the algorithm mentioned 
+in this
 [paper](https://github.com/ChiragVaghela10/quarter_laplacian/blob/refactoring/data/ICIP%201%20-%20QUARTER%20LAPLACIAN%20FILTER%20FOR%20EDGE%20AWARE%20IMAGE%20PROCESSING.pdf).
 
 <img src="img/comparison.png" width="900"><br/>
-Fig1: Visualization of Quarter Laplacian Filter compared to standard Laplacian Filter applied for multiple 
-iterations<br/><br/>
+Fig1: Results of Quarter Laplacian Filter compared to standard Laplacian Filter applied for multiple iterations<br/>
+
+Experiments were also carried on enhancing low-light images of LOL dataset using QLF and compared against isotropic 
+Laplacian filter. The quantitative analysis is performed using PSNR, SSIM, and EPI as evaluation metrics.
 
 ## Overview
 Image smoothing is the fundamental operation in image processing. We use it to remove image details or noise in the
@@ -38,10 +41,11 @@ and standard discrete Laplacian Kernels are as follows:
 </pre>
 
 <img src="img/laplacian_operator_spectral_analysis.png" width="400"><br/>
-Fig2: Spectral analysis of discrete Laplacian operators<br/><br/>
+Fig2: spectral analysis of discrete Laplacian operators<br/><br/>
 
 The right kernel is the most isotropic one and is chosen for implementation in this repository. The paper proposes to 
-use quarter window of discrete Laplacian operator.  Therefore, the quarter Laplacian filters would be as follows:
+use quarter window of discrete Laplacian operator.  Therefore, the kernels of quarter Laplacian filter 
+would be as follows:
 
 <pre>
      [1/3, 1/3, 0]        [0, 1/3, 1/3]        [0,   0,   0]        [0,     0, 0]
@@ -91,23 +95,22 @@ response(i,j) = \frac{1}{3} . box\_sum(i, j) - \frac{4}{3} . U(i+1, j+1)
 ```
 
 ### faster implementation leveraging overlapped support region
-The QLF requires four directional responses (from four quarter windows $k_i , \forall i = 1,...,4$). Therefore,
-- Instead of convolving four separate kernels, the input image is rotated in 0°, 90°, 180°, and 270° increment.
-- Apply the fast $K_1$ response, then rotate each result back. This technique exploits the overlapping support so that 
-the same box filter computation can be reused after simple rotations.
+
+Because of the overlapping support region, we perform only one box filtering instead of four independent convolutions. 
+This achieves nearly the same runtime as a conventional Laplacian filter.
+
+The QLF requires four directional responses (from four quarter windows $k_i , \forall i = 1,...,4$). It is achieved by,
+- Instead of convolving four separate kernels, only one convolution is performed using box-filter.
+- Then, overlapped support region is leveraged as shown in fig 4. The bottom right region of kernel 1 is same as top-left
+region of kernel 3.
 
 <img src="img/overlapped_region.png" width="200"><br/>
-Fig4: Overlapped support regions for different locations can be used to reduce the computation. e.g. the bottom-right
+Fig4: overlapped support regions for different locations can be used to reduce the computation. e.g. the bottom-right
 region for the red dot is exactly the upper left region for the yellow dot.<br/><br/>
 
-- All four directional responses are stacked. For each pixel, the response with the smallest absolute value is selected 
-(mimicking the non–linear min–selection step in QLF).
-- The selected response is then either added to the image (diffusion) or used as the direct output, 
-depending on the `add_to_input` flag for the filter.
-
-Because of the overlapping support region and reusability via rotation, we perform only one box filtering per rotated 
-version instead of four independent convolutions. This achieves nearly the same runtime as a conventional Laplacian 
-filter.
+- All four directional responses are extracted out from convolution result. Then, for each pixel, the response with 
+the smallest absolute value is selected (mimicking the non–linear min–selection step in QLF).
+- The selected response is then added to the image (diffusion process).
 
 ## Experimentation
 
@@ -156,18 +159,28 @@ Higher EPI means the filtering preserved more of the original edges.
 | EPI    | Edge preservation    | 0 - 1      | > 0.7      | Custom metric; reflects paper's goal well |
 
 ### Low Light Enhancement Use Case Demonstration
-The Quarter Laplacian Filter (QLF) was applied to 500 densely low-light images sourced from the
-[Kaggle dataset](https://www.kaggle.com/datasets/soumikrakshit/lol-dataset). For each image, three quantitative metrics
-PSNR, SSIM and EPI were computed after applying both the QLF and the standard Laplacian filter. Finally, the average 
-values of all three metrics were calculated across the entire dataset to provide a comprehensive comparison of the 
-two filtering approaches.
+The pipeline implemented for enhancement of low-light image:
+
+```math
+1. For each iamge, convert low-light image to YCrCb color space
+2. Approximate gain using luminance (Y) of low-light and corresponding base image
+3. Restore low-light image using approximated gain
+4. Apply QLF/Laplace filter
+5. Evaluate metrics
+```
+
+The Quarter Laplacian Filter (QLF) was applied to 500 low-light images of the
+[LOL dataset](https://www.kaggle.com/datasets/soumikrakshit/lol-dataset). For each image, three quantitative metrics
+PSNR, SSIM, and EPI were computed after applying both the QLF and the standard Laplacian filter independently. 
+Finally, the average values of all three metrics were calculated across the entire dataset to provide a 
+comprehensive comparison of the two filtering approaches.
+
+The robustness of QLF is also presented for various values of alpha ($c$) in the diffusion process ranging 
+(0.1, 0.2, ..., 1.0).
 
 ## Results
 
-<img src="img/low_light_exp_result.png" width="900"><br/>
-Fig5: Low-Light Enhancement. Left-to-right: original, gamma corrected, QLF and standard Laplace filters<br/><br/>
-
-Performance comparison of QLF vs Laplace filter using PSNR, SSIM and EPI on 500 low-light images:
+Performance comparison of QLF vs Laplace filter using PSNR, SSIM, and EPI on 500 low-light images:
 
 | Metric | QLF   | Laplacian | 
 |--------|-------|-----------|
@@ -187,13 +200,19 @@ be lost.
 meaning it retains edge details more effectively than the standard Laplacian, which is crucial for maintaining the 
 sharpness and clarity of objects.
 
+The following results are obtained for c = [0.1, 0.2, ..., 1.0] in discrete diffusion equation mentioned above, and
+iterations = 10 for both filters:
+<br/><img src="img/filters_against_alphas.png" width="900"><br/>
+
+It shows that laplacian filter becomes very unstable when aggressive filtering is applied on very dark images.
+
 ## How to Run
 ```
 python main.py
 ```
 
 ## Future Prospects
-- reduce run time
-- perform statistical significance test
-- explore more quantitative matrices
+- Optimize execution time introducing GPU utilization 
+- Explore more quantitative matrics
+- Conduct more experiments using more parameters
 
