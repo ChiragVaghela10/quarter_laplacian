@@ -1,74 +1,113 @@
-from .utilities import *
+from abc import ABC
+import numpy as np
+import cv2 as cv
 
 
-class Smoothing(object):
-    """
-    The base class for smoothing operation
-    """
-    kernel = np.array([])
-    K1 = np.array([])
-    K2 = np.array([])
-    K3 = np.array([])
-    K4 = np.array([])
+class Filter(ABC):
+    def __init__(self) -> None:
+        pass
 
-    img = np.array([])
-    padded_img = np.array([])
-    res_img = np.array([])
+    def apply_filter(self, U: np.ndarray, iterations: int, alpha: float) -> np.ndarray:
+        """Apply standard Laplacian diffusion for given iterations."""
+        pass
 
-    def __init__(self, kernel):
+
+class QuarterLaplacian(Filter):
+    def __init__(self) -> None:
+        super().__init__()
+
+    def _compute_convolution_kernels(self, U: np.ndarray) -> np.ndarray:
         """
-        This method computes four quarter kernels K1, K2, K3, K4 from kernel parameter
+        The function computes the four convolution kernels k1, k2, k3, k4 using the fast implementation approach
+        mentioned in the paper. The function returns a stacked array of the four kernels.
 
-        :param kernel: One of the Laplacian Kernels
-        """
-        self.kernel = kernel
-        self.edges = self.kernel.shape[0] // 2  # Assumed kernel is a square matrix
-        self.K1 = np.array([
-            [self.kernel[0][0] * 4, self.kernel[0][1] * 2, 0],
-            [self.kernel[1][0] * 2,       -1,              0],
-            [0,                            0,              0]
-        ])
-        self.K2 = np.array([
-            [0, self.kernel[0][1] * 2, self.kernel[0][2] * 4],
-            [0,         -1,            self.kernel[1][2] * 2],
-            [0,          0,                                0]
-        ])
-        self.K3 = np.array([
-            [0,          0,                                0],
-            [0,         -1,            self.kernel[1][2] * 2],
-            [0, self.kernel[2][1] * 2, self.kernel[2][2] * 4]
-        ])
-        self.K4 = np.array([
-            [0,                      0,                    0],
-            [self.kernel[1][0] * 2, -1,                    0],
-            [self.kernel[2][0] * 4, self.kernel[2][1] * 2, 0]
-        ])
+        Only one convolution is used to generate four kernels because of the overlapped support region.
 
-    def laplacian_filter(self, image):
+        parameters:
+            U: The input image
+        returns:
+            qlf_response: stacked array of the four kernels
         """
-        This method iterates through all pixels of the padded image and performs convolution
-        :param image: padded image
-        :return: smoothed image
-        """
-        self.img = image
-        self.padded_img = zero_padding(self.img, self.edges)
-        self.res_img = np.zeros(self.padded_img.shape)
-        for m in np.arange(self.edges, self.padded_img.shape[0] - self.edges):
-            for n in np.arange(self.edges, self.padded_img.shape[1] - self.edges):
-                self.res_img[m, n] = self.convolve(m, n)
-        return self.res_img[self.edges:self.res_img.shape[0] - self.edges, self.edges:self.res_img.shape[1] - self.edges]
+        extended_U = cv.copyMakeBorder(src=U, top=1, bottom=1, left=1, right=1, borderType=cv.BORDER_REPLICATE)
 
-    def convolve(self, x, y):
+        # chipping off extended-border by getting lower right part
+        convolved_U = cv.boxFilter(src=extended_U, ddepth=-1, ksize=(2, 2),
+                                   normalize=False, borderType=cv.BORDER_REPLICATE)[1:, 1:]
+
+        k1 = (1/3 * convolved_U[:-1, :-1]) - (4/3 * U)
+        k2 = (1/3 * convolved_U[:-1, 1:]) - (4/3 * U)
+        k3 = (1/3 * convolved_U[1:, 1:]) - (4/3 * U)
+        k4 = (1/3 * convolved_U[1:, :-1]) - (4/3 * U)
+
+        stacked_kernels = np.stack([k1, k2, k3, k4], axis=0)
+        return stacked_kernels
+
+    def _compute_qlf_result(self, U: np.ndarray) -> np.ndarray:
         """
-        This method takes coordinates of the image and calculate di_xy = ki * U(x, y) for all i = 1,2,3,4
-        :param x: row from the top
-        :param y: column from the left
-        :return: d_{argmin{|di(x, y)|}} i.e. pixel value obtained for res_img at position x, y
+        This function computes the QLF result for a given image U.
+
+        The function calculates m(x, y) = argmin_i {|d_i(x, y)|; i=1,2,3,4} using equation (5) in the paper. Then the
+        d_m(x,y)(X, Y) is used for each pixel (X, Y) to get the QLF result for that pixel.
+
+        Parameters:
+            U: The input image
+        Returns:
+            qlf_response: The QLF result (the term QuarterLaplacianFilter(U^t) in equation (7))
         """
-        curr_region = self.padded_img[x - self.edges:x + self.edges + 1, y - self.edges:y + self.edges + 1]
-        res_K1 = np.sum(self.K1 * curr_region)
-        res_K2 = np.sum(self.K2 * curr_region)
-        res_K3 = np.sum(self.K3 * curr_region)
-        res_K4 = np.sum(self.K4 * curr_region)
-        all_res = [res_K1, res_K2, res_K3, res_K4]
-        return all_res[np.argmin([abs(res_K1), abs(res_K2), abs(res_K3), abs(res_K4)])]
+        stacked_kernels = self._compute_convolution_kernels(U)
+        abs_kernels = np.abs(stacked_kernels)
+        min_indices = np.argmin(abs_kernels, axis=0)
+
+        # compute dm(x,y) (best di using equation (v))
+        qlf_response = np.take_along_axis(stacked_kernels, min_indices[None, ...], axis=0).squeeze(0)
+        return qlf_response
+
+    def apply_filter(self, U: np.ndarray, iterations: int = 10, alpha = 1) -> np.ndarray:
+        """
+        This function applies the QLF filter to the input image U.
+
+        Parameters:
+            U: The input image
+        Returns:
+            result: grayscale image with pixel values rescaled in range [0, 255].
+        """
+        U_out = U.copy().astype(np.float32) / 255.0 if np.max(U) > 1.0 else U.copy().astype(np.float32)
+
+        # perform diffusion process U^t+1 = U^t + QuarterLaplacianFilter(U^t) [refer equation (7) for details]
+        for _ in range(iterations):
+            U_out += alpha * self._compute_qlf_result(U_out)
+
+        U_out = np.clip(U_out, 0, 1)
+        result = (U_out * 255).astype(np.uint8)
+        return result
+
+
+class LaplacianFilter(Filter):
+    def __init__(self) -> None:
+        super().__init__()
+        self.kernel = (1/12) * np.array([
+            [1, 2, 1],
+            [2, -12, 2],
+            [1, 2, 1]
+        ], dtype=np.float32)
+
+    def apply_filter(self, U: np.ndarray, iterations: int = 10, alpha: float = 0.2) -> np.ndarray:
+        """Apply standard Laplacian diffusion for given iterations.
+
+        Args:
+            U (np.ndarray): Input image (float32).
+            iterations (int): Number of diffusion steps.
+            alpha (float): Time step value in discrete diffusion equation. Defaults to 0.2.
+
+        Returns:
+            result: Filtered image in range [0, 255] with dtype np.uint8.
+        """
+        U_out = U.copy().astype(np.float32) / 255.0 if np.max(U) > 1.0 else U.copy().astype(np.float32)
+
+        for _ in range(iterations):
+            lap = cv.filter2D(U_out, ddepth=-1, kernel=self.kernel, borderType=cv.BORDER_REPLICATE)
+            U_out += alpha * lap
+
+        U_out = np.clip(U_out, 0, 1)
+        result = (U_out * 255).astype(np.uint8)
+        return result
