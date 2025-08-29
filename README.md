@@ -200,6 +200,11 @@ iterations = 10 for both filters:
 It shows that laplacian filter becomes very unstable when aggressive filtering is applied on very dark images.
 
 ## How to Run
+1. Activate virtual environment and run
+```
+pip install requirements.txt
+```
+2. Run the main file
 ```
 python main.py
 ```
